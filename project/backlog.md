@@ -88,8 +88,6 @@ In each section, items are listed approximately from newest to oldest. A patch i
 - 🔘 Bring over the nemo-anywhere pipeline. `cicd.bash` stage engine, `config.bash` set up for `upstream.bash` and `build.bash`, pre-push merge gate, version-bump guard on the `version` file, `release.bash`, `changelog-notes.bash`, and backup and publish.
 	- Note: the pipeline and pre-push hook should run the content scrub only if it's present.
 
-- 🔘 Branch protection on `main`.
-
 - 🔘 Publish v0.1.0-alpha1 as a prerelease, and install it with `--channel dev` on a clean Debian 13.
 
 - 🔘 Sign `sha256sums.txt` with minisign or sigstore, and have the installer check it.
@@ -123,6 +121,10 @@ In each section, items are listed approximately from newest to oldest. A patch i
 - 🔘 liblxqt: send the `LXQT_CONFIG_NAME` patch upstream once it's been in use a while.
 
 ### Done
+
+- ✅ Branch protection.
+	- Done: rulesets on `main` and `dev` that block force-push and deletion and require a PR, with admin bypass. A ruleset on `v*` tags blocks deletion.
+	- Done: secret scanning with push protection, Dependabot alerts and security updates, and private vulnerability reporting.
 
 - ✅ Installer and updater for Debian 13.
 	- Done: install, switch to any version, rollback, prune and uninstall.
