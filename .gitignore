@@ -1,0 +1,16 @@
+# Upstream mirrors, patched trees, build dirs (cicd/upstream.bash, cicd/build.bash)
+/work/
+
+# Local CI/CD transient artifacts (release builds, logs)
+/cicd/artifacts/
+
+# Nix
+/result
+/result-*
+
+# Editor / OS
+*.swp
+*~
+.vscode/
+.idea/
+.DS_Store

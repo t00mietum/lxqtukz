@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+
+##	- Purpose: Session launcher for LXQtukz: LXQt on Wayfire. Stands in for
+##	  upstream's startlxqtwayland, which picks among several compositors; this
+##	  one only ever starts Wayfire, and sets up the environment that keeps every
+##	  setting in one place:
+##	    user:    ${XDG_CONFIG_HOME:-~/.config}/lxqtukz/
+##	    system:  /etc/xdg/lxqtukz/            (admin; wins over vendor)
+##	    vendor:  <prefix>/etc/xdg/lxqtukz/    (comes with each release)
+##	- The prefix is resolved once, here, to a real versioned directory. A
+##	  session keeps running the release it logged in with, even if the updater
+##	  switches 'current' underneath it; the next login picks up the new one.
+##	- Started by the display manager through share/wayland-sessions/lxqtukz.desktop.
+##	- Syntax: startlxqtukz
+##	History: At bottom of script.
+
+##	Copyright © 2026 t00mietum (ID: f⍒Ê🝅ĜᛎỹqFẅ▿⍢Ŷ‡ʬẼᛏ🜣)
+##	Licensed under The MIT License (MIT). Full text at:
+##		https://mit-license.org/
+##	SPDX-License-Identifier: MIT
+
+
+set -uo pipefail
+
+## Not readlink -f on the script itself: on NixOS the file is a symlink into a
+## different store path than the joined prefix. Resolving the directory gets
+## /opt/lxqtukz/versions/<ver> on Debian and the joined env on NixOS.
+LXQTUKZ_PREFIX="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+LXQTUKZ_VERSION="$(sed -n 's/^LXQTUKZ_VERSION=//p' "${LXQTUKZ_PREFIX}/share/lxqtukz/manifest" 2>/dev/null)"
+export LXQTUKZ_PREFIX LXQTUKZ_VERSION
+
+fLog(){ echo "startlxqtukz: $*" >&2; }
+fLog "LXQtukz ${LXQTUKZ_VERSION:-unknown version} from ${LXQTUKZ_PREFIX}"
+
+fPrependPath(){ ## var dir [fallback-if-unset]
+	local var="$1" dir="$2" current="${!1:-${3:-}}"
+	case ":${current}:" in *":${dir}:"*) ;; *) current="${dir}${current:+:${current}}" ;; esac
+	export "${var}=${current}"
+}
+fAppendPath(){ ## var dir [fallback-if-unset]
+	local var="$1" dir="$2" current="${!1:-${3:-}}"
+	case ":${current}:" in *":${dir}:"*) ;; *) current="${current:+${current}:}${dir}" ;; esac
+	export "${var}=${current}"
+}
+
+
+#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+# Environment
+
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-${HOME}/.cache}"
+
+## Ours first, so a distro's own LXQt (if any) is never picked up by accident.
+fPrependPath PATH          "${LXQTUKZ_PREFIX}/bin"
+fPrependPath XDG_DATA_DIRS "${LXQTUKZ_PREFIX}/share" "/usr/local/share:/usr/share"
+
+## /etc/xdg before the vendor dir: QSettings takes the first dir that has the
+## file, so an admin's /etc/xdg/lxqtukz/panel.conf overrides the release's copy.
+fAppendPath XDG_CONFIG_DIRS "/etc/xdg" ""
+fAppendPath XDG_CONFIG_DIRS "${LXQTUKZ_PREFIX}/etc/xdg"
+
+## Read by our liblxqt patch: every LXQt module's settings go under this name.
+export LXQT_CONFIG_NAME="lxqtukz"
+LXQTUKZ_USER_CONFIG="${XDG_CONFIG_HOME}/${LXQT_CONFIG_NAME}"
+mkdir -p "${LXQTUKZ_USER_CONFIG}"
+
+[[ -d "${LXQTUKZ_PREFIX}/lib/qt6/plugins" ]] && fPrependPath QT_PLUGIN_PATH "${LXQTUKZ_PREFIX}/lib/qt6/plugins"
+export QT_QPA_PLATFORMTHEME="lxqt"
+export QT_EXCLUDE_GENERIC_BEARER=1
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+export QT_ACCESSIBILITY=1
+export XDG_MENU_PREFIX="lxqt-"
+export XDG_SESSION_TYPE="wayland"
+export XDG_SESSION_DESKTOP="lxqtukz"
+export XDG_CURRENT_DESKTOP="LXQt:wayfire:wlroots"
+export DESKTOP_SESSION="lxqtukz"
+
+if [[ -e "${XDG_CONFIG_HOME}/user-dirs.dirs" ]]; then
+	# shellcheck disable=1091
+	source "${XDG_CONFIG_HOME}/user-dirs.dirs"
+fi
+mkdir -p "${XDG_DESKTOP_DIR:-${HOME}/Desktop}"
+
+if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+	if [[ -z "${XDG_RUNTIME_DIR:-}" || ! -S "${XDG_RUNTIME_DIR}/bus" || ! -O "${XDG_RUNTIME_DIR}/bus" ]]; then
+		eval "$(dbus-launch --sh-syntax --exit-with-session)" || fLog "dbus-launch failed"
+	fi
+fi
+
+if type systemd-detect-virt >/dev/null 2>&1 && systemd-detect-virt --quiet; then
+	export WLR_NO_HARDWARE_CURSORS=1
+fi
+
+
+#••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+# Wayfire config
+
+## Wayfire reads exactly one file, with no layering, so the user's copy is
+## seeded once from the first default found: admin's, then the release's.
+## Later admin edits do not reach users who already have a copy; layered
+## config is a planned Wayfire patch (see project/backlog.md).
+wayfireIni="${LXQTUKZ_USER_CONFIG}/wayfire.ini"
+if [[ ! -f "${wayfireIni}" ]]; then
+	for seed in "/etc/xdg/lxqtukz/wayfire.ini" "${LXQTUKZ_PREFIX}/etc/xdg/lxqtukz/wayfire.ini"; do
+		[[ -r "${seed}" ]] || continue
+		cp "${seed}" "${wayfireIni}"
+		## Same keyboard guess upstream makes, and only on first seed.
+		layout="${LANG:0:2}"
+		if [[ -n "${layout}" ]] && grep -A98 '! layout' /usr/share/X11/xkb/rules/base.lst 2>/dev/null | awk '{print $1}' | grep -qx "${layout}"; then
+			sed -i -e '/^xkb_layout[[:space:]]*=/d' -e "/^\[input\]/a xkb_layout = ${layout}" "${wayfireIni}"
+		fi
+		fLog "seeded ${wayfireIni} from ${seed}"
+		break
+	done
+fi
+[[ -f "${wayfireIni}" ]] || { fLog "no wayfire.ini found to seed from; is the install complete?"; exit 1; }
+
+exec wayfire -c "${wayfireIni}"
+
+
+##	History:
+##		- 2026-10-12: Created.

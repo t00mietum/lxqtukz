@@ -1,0 +1,7 @@
+##	Extra configure arguments for wayfire, one per line.
+##	Wayfire 0.11 needs wlroots 0.20, which no target distro has yet, so the
+##	pinned wlroots and wf-config submodules are built in and linked statically.
+-Duse_system_wlroots=disabled
+-Duse_system_wfconfig=disabled
+-Dxwayland=enabled
+-Dtests=disabled

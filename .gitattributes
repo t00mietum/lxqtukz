@@ -1,0 +1,8 @@
+# Shell scripts stay LF everywhere.
+*.bash text eol=lf
+*.sh   text eol=lf
+/source/bin/* text eol=lf
+
+# Patches must reach git am byte for byte: upstream files may have CRLF or
+# trailing whitespace that a conversion would silently break.
+*.patch -text

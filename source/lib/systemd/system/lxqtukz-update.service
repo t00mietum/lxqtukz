@@ -1,0 +1,13 @@
+[Unit]
+Description=LXQtukz automatic update
+Documentation=https://github.com/t00mietum/lxqtukz
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+## --auto honors /etc/xdg/lxqtukz/update.conf: does nothing when AUTO_UPDATE=no,
+## stays on PIN when one is set, and only stages; a running session is left alone.
+ExecStart=/usr/local/bin/lxqtukz-update --auto
+Nice=10
+IOSchedulingClass=idle

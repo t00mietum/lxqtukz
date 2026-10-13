@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=LXQtukz
+Comment=LXQt desktop on the Wayfire compositor
+Exec=@EXEC_PREFIX@/bin/startlxqtukz
+TryExec=@EXEC_PREFIX@/bin/startlxqtukz
+DesktopNames=LXQt;wayfire;wlroots
