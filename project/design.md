@@ -81,8 +81,10 @@ It follows upstream releases for as long as the project lives. The patches may g
 - `patches/<component>/`: the patch queue for each component, as `NNNN-*.patch` files plus a `series` file.
 
 - `source/`: LXQtukz's own files that go into the prefix. Session launcher, session entry, systemd units and default settings.
+	- `source/settings/`: the settings app, `lxqtukz-settings`. Its design is in [design_docs/20260930-145721_settings-dialog.md](design_docs/20260930-145721_settings-dialog.md).
 
 - `cicd/`: `upstream.bash` for tracking and patch queues, `build.bash` for the Debian build, `linux/Dockerfile` for the build container, and shared helpers in `utility/`, including `stage-prefix.bash`.
+	- `settings.bash` checks the settings app and runs it on a headless Wayfire, in the test container from `linux/Dockerfile.test`.
 
 - `nix/`: overlay, package and NixOS module. `flake.nix` is at the root.
 
@@ -253,5 +255,7 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 - 2026-10-12: Wayfire's bundled wlroots was chosen over a system one, because no target distro has wlroots 0.20 yet.
 
 - 2026-10-12: LGPL-2.1-or-later was chosen for our own desktop code because it matches LXQt, so code can move both ways without relicensing. Scripts are MIT, like the other t00mietum scripts.
+
+- 2026-10-14: The settings app is Rust with a Qt Quick interface through cxx-qt, drawn by KDE's desktop style for Qt Quick. It keeps Rust and shcl, as in SilkTerm, and still follows the Qt theme like any other Qt app. Alternatives are in the settings design doc.
 
 - 2026-10-14: LXQt stays the base rather than COSMIC, for now. tukzedo plans its own settings app, file manager, terminal and desktop layer, and maybe a panel, which leaves the base supplying the compositor and session plumbing. Wayfire's plugins and lxqt-qtplugin's theming of other Qt apps suit the personalities better than cosmic-comp, which is built for COSMIC's own shell.

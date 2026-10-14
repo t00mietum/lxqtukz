@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	build-essential ca-certificates cmake file git meson ninja-build pkg-config python3 xz-utils \
 	qt6-base-dev qt6-base-private-dev qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
 	qt6-svg-dev qt6-wayland-dev qt6-wayland-dev-tools \
-	libkf6windowsystem-dev libkf6solid-dev libkf6idletime-dev libkf6screen-dev \
+	libkf6windowsystem-dev libkf6solid-dev libkf6idletime-dev libkscreen-dev \
 	liblayershellqtinterface-dev libpolkit-qt6-1-dev libpolkit-agent-1-dev \
 	libglib2.0-dev libmenu-cache-dev libexif-dev libmuparser-dev libudev-dev \
 	libx11-dev libxcb1-dev libxcb-util-dev libxcb-damage0-dev libxcb-xkb-dev libxcb-composite0-dev \
@@ -23,6 +23,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	libinput-dev libevdev-dev libpixman-1-dev libcairo2-dev libpango1.0-dev libjpeg-dev libpng-dev \
 	libglm-dev libseat-dev libdisplay-info-dev libliftoff-dev hwdata libvulkan-dev glslang-tools \
 	liblcms2-dev libxcb-render-util0-dev libxcb-errors-dev xwayland libgomp1 \
+	qt6-declarative-dev qt6-declarative-dev-tools curl \
 	&& rm -rf /var/lib/apt/lists/*
+
+##	Rust for our own apps. Pinned here and in each crate's rust-toolchain.toml;
+##	bump both together.
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo PATH=/usr/local/cargo/bin:$PATH
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal \
+		--default-toolchain 1.96.0 --component rustfmt,clippy \
+	&& chmod -R a+rX /usr/local/rustup /usr/local/cargo
 
 WORKDIR /src

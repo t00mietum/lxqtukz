@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+GenericName=Desktop settings
+Comment=Screen, keyboard, mouse and touchpad settings in one place
+Exec=lxqtukz-settings
+Icon=preferences-system
+Categories=Settings;DesktopSettings;Qt;
+Keywords=screensaver;power;keyboard;mouse;touchpad;repeat;layout;

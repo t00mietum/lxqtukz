@@ -38,8 +38,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - NixOS flake with an overlay and a `services.lxqtukz` module.
 
+- `lxqtukz-settings`, a settings app, with screen power and screensaver, keyboard, and mouse and touchpad tabs. Debian build only for now.
+
 ### Other work
 
 - Upstream tracking and patch-queue tooling (`cicd/upstream.bash`).
 
 - Debian 13 container build (`cicd/build.bash`).
+
+- Settings app checks and keyboard tests on a headless Wayfire (`cicd/settings.bash`).

@@ -58,6 +58,8 @@ It is the default desktop of tukzedo-linux, on both its Debian and its NixOS edi
 
 - A session launcher, defaults, and an updater that tie it together.
 
+- Our own settings app, `lxqtukz-settings`, meant to put every setting in one place. It starts with the screen, keyboard, mouse and touchpad.
+
 Provenance and how upstream is tracked: [upstream.md](upstream.md).
 
 ## Status
@@ -145,6 +147,7 @@ cd lxqtukz
 cicd/upstream.bash status        # pins, patch counts, newer upstream releases
 cicd/upstream.bash apply liblxqt # upstream source plus our patches, in work/src/liblxqt
 cicd/build.bash                  # full Debian 13 build in a container
+cicd/settings.bash check keys    # settings app: lints and tests, then a run on a headless Wayfire
 ~~~
 
 Changing upstream code, moving to a new upstream release, and the release process are in [project/design.md](project/design.md). Conventions for contributors are in [contributing.md](contributing.md).

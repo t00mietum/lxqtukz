@@ -53,6 +53,10 @@ fPlace 0755 "${REPO_ROOT}/install.bash" "${prefix}/bin/lxqtukz-update"
 for unit in "${src}"/lib/systemd/system/*; do
 	fPlace 0644 "${unit}" "${prefix}/lib/systemd/system/$(basename "${unit}")"
 done
+for entry in "${src}"/share/applications/*.desktop; do
+	fPlace 0644 "${entry}" "${prefix}/share/applications/$(basename "${entry}")"
+done
+
 sessionFile="${prefix}/share/wayland-sessions/lxqtukz.desktop"
 mkdir -p "$(dirname "${sessionFile}")"; rm -f "${sessionFile}"
 sed "s|@EXEC_PREFIX@|${execPrefix}|g" "${src}/share/wayland-sessions/lxqtukz.desktop" > "${sessionFile}"

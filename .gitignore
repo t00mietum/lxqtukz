@@ -4,6 +4,9 @@
 # Local CI/CD transient artifacts (release builds, logs)
 /cicd/artifacts/
 
+# QML language server settings the settings app's build writes into its source
+/source/settings/.qmlls.ini
+
 # Nix
 /result
 /result-*

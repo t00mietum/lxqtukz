@@ -72,14 +72,17 @@ In each section, items are listed approximately from newest to oldest. A patch i
 
 ### Milestone 3 - All settings in one place
 
-- 🔘 Start work on a unified settings application, ala KDE. This will be our own, we'll eventually remove all other individual OS & desktop settings applications.
+- 🛠️ Start work on a unified settings application, ala KDE. This will be our own, we'll eventually remove all other individual OS & desktop settings applications.
 	- Our desktop app (for icons and wallpaper management), 'tukzdesk' will have its own settings app, which we'll remove, and use its exposed API from this new settings app.
 	- Baseline design: `design_docs/20260930-145721_settings-dialog.md`, adapted from silkterm. Tabs will be on the left.
+	- Progress 20261014: started as `lxqtukz-settings` in `source/settings/`. Rust, with a Qt Quick interface through cxx-qt, drawn in the desktop's Qt style. Its tabs and rows come from a shcl file built into it.
+	- Progress 20261014: `cicd/settings.bash` checks it, and runs it from the keyboard on a Wayfire in the test container. The release build includes it.
 
-- 🔘 Settings, implement in order of priority:
+- 🛠️ Settings, implement in order of priority:
 	- Need a screensaver manager and screen power management app. Something simple and intuitive, like XFCE4's, but integrated into the settings app.
 	- Keyboard settings (delay, speed, shortcuts). Like XFCE4's, but integrated into the settings app.
 	- Mouse settings. Like XFCE4's, but integrated into the settings app.
+	- Progress 20261014: a first cut of all 3, through Wayfire's own settings. Screen off and Wayfire's cube screensaver with their timeouts, key repeat, layouts and Num Lock, and the mouse and touchpad. Still to do: a lock screen, power actions and keyboard shortcuts.
 
 - 🔘 List every config path in every component. Search all pinned sources for `QSettings(`, `XdgDirs::configHome`, `"lxqt"` and `.config/`. Mark each as covered by the liblxqt patch or needing its own.
 
@@ -114,6 +117,14 @@ In each section, items are listed approximately from newest to oldest. A patch i
 ## Backlog
 
 ### Misc to-do
+
+- 🔘 Settings app: build it in the NixOS flake. Only the Debian build has it so far.
+
+- 🔘 Settings app: the rest of its design doc. Reopening on the same tab, keeping the window size for the session, a file another program has open, and a focus ring on sliders.
+
+- 🔘 Settings app: try it in a real LXQtukz session, under a few Kvantum themes.
+
+- 🔘 `cicd/build.bash <component>` can't stage. The container's prefix starts empty on every run, so a partial build has nothing to finish.
 
 - 🔘 Create one shcl theme file per personality, and generate all of that personality's theming from it.
 	- Note: tukzedo's own apps, such as silkterm, captain-nemo, the desktop layer and maybe a panel, aren't Qt. Kvantum alone can no longer style a personality.
