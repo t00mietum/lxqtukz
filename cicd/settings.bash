@@ -10,7 +10,8 @@
 ##	            errors, and the unit tests
 ##	    build   release build, to work/build/settings/release/lxqtukz-settings
 ##	    gui     runs the release build on a headless Wayfire, opens each tab,
-##	            and saves a screenshot of each to cicd/artifacts/settings/.
+##	            and saves a screenshot of each to cicd/artifacts/settings/,
+##	            then one tab again under a dark LXQt palette (dark-*.png).
 ##	            The compositor uses the GPU render node when there is one.
 ##	    keys    drives the app from the keyboard on that same Wayfire, and
 ##	            checks what reaches wayfire.ini after each step
@@ -299,6 +300,25 @@ fStage_gui(){
 		fApp_LogClean "tab ${tab}"
 		fEcho "${tab} -> cicd/artifacts/settings/${name}.png"
 	done < <(sed -n 's/^tabs: \[\(.*\)\]$/\1/p' "${CRATE}/src/settings_ui.shcl" | grep -o '"[^"]*"' | tr -d '"')
+
+	## The text takes the theme's colors only if the app passes the palette on
+	## to the desktop style. Without that, this shows dark text on dark.
+	mkdir -p "${XDG_CONFIG_HOME}/lxqt"
+	cat > "${XDG_CONFIG_HOME}/lxqt/lxqt.conf" <<-'EOF'
+		[Palette]
+		window_color=#212121
+		window_text_color=#f9f9f9
+		base_color=#2e2e2d
+		text_color=#ececec
+		highlight_color=#0054a7
+		highlighted_text_color=#ffffff
+	EOF
+	QT_QPA_PLATFORMTHEME=lxqt fApp_Start "Keyboard"
+	grim "${SHOTS}/dark-keyboard.png"
+	fApp_Stop
+	rm -r "${XDG_CONFIG_HOME}/lxqt"
+	fApp_LogClean "dark palette"
+	fEcho "Keyboard, dark palette -> cicd/artifacts/settings/dark-keyboard.png"
 }
 
 ## Drives the app from the keyboard, the way a person would, and checks the
@@ -361,3 +381,4 @@ fEcho "done: ${stages[*]}"
 ##		- 2026-10-14: Created.
 ##		- 2026-10-14: Dogfood stage, and every stage by default.
 ##		- 2026-10-14: Dogfood to ~/.local/bin, and the session's Wayfire file in tests.
+##		- 2026-10-14: A screenshot under a dark LXQt palette.
