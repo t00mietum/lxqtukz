@@ -17,10 +17,11 @@
 ##	    lxqtukz-<version>-<target>-deps.txt    Debian packages it needs at run time
 ##	    lxqtukz-<version>-sha256sums.txt
 ##	- Syntax: cicd/build.bash [--here] [--jobs N] [component...]
-##	    component...  build only these (into an existing prefix); default all, from clean
+##	    component...  build only these (into an existing prefix); default all, from clean.
+##	                  'settings' is our settings app, source/settings/.
 ##	History: At bottom of script.
 
-##	Copyright © 2026 t00mietum (ID: f⍒Ê🝅ĜᛎỹqFẅ▿⍢Ŷ‡ʬẼᛏ🜣)
+##	Copyright © 2026 t00mietum (CryptogID: ปʬϝღถɔ4რఠΔթะ9ƾǝu)
 ##	Licensed under The MIT License (MIT). Full text at:
 ##		https://mit-license.org/
 ##	SPDX-License-Identifier: MIT
@@ -56,6 +57,15 @@ while (($#)); do case "$1" in
 	*) only+=("$1"); shift ;;
 esac; done
 
+## The settings app is built from this repo, so it is picked out of the list
+## before the rest is matched against components.conf.
+declare -i withSettings=0
+upstreamOnly=()
+for name in "${only[@]+"${only[@]}"}"; do
+	if [[ "${name}" == settings ]]; then withSettings=1; else upstreamOnly+=("${name}"); fi
+done
+((${#only[@]})) || withSettings=1
+
 
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 # Outside: hand off to the container
@@ -67,7 +77,9 @@ if ((! here)); then
 	## Sources are fetched and patched on the host, where git credentials and
 	## the mirrors live; the container only compiles.
 	fSection "Fetch and apply upstream"
-	"${REPO_ROOT}/cicd/upstream.bash" apply "${only[@]+"${only[@]}"}"
+	if ((${#only[@]} == 0 || ${#upstreamOnly[@]})); then
+		"${REPO_ROOT}/cicd/upstream.bash" apply "${upstreamOnly[@]+"${upstreamOnly[@]}"}"
+	fi
 	fSection "Build in container"
 	exec docker run --rm -i \
 		-v "${REPO_ROOT}:/src" -w /src \
@@ -79,8 +91,24 @@ fi
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 # Inside: compile
 
+## The container runs as root. Hand what it wrote in the tree back to the
+## host user however the build ends, so a failed build leaves nothing behind
+## that a later build as that user cannot write over.
+fGiveBack(){
+	[[ -n "${HOST_UID:-}" ]] || return 0
+	local dir
+	for dir in "${ARTIFACTS}" "${REPO_ROOT}/work/build" "${REPO_ROOT}/work/cargo"; do
+		[[ ! -e "${dir}" ]] || chown -R "${HOST_UID}:${HOST_GID}" "${dir}"
+	done
+}
+trap fGiveBack EXIT
+
 fComponents_Load
-fComponents_Select "${only[@]+"${only[@]}"}"
+if ((${#only[@]} && ! ${#upstreamOnly[@]})); then
+	selectedComponents=()
+else
+	fComponents_Select "${upstreamOnly[@]+"${upstreamOnly[@]}"}"
+fi
 
 ## A full build starts from an empty prefix, so nothing stale ends up in a release.
 if ((${#only[@]} == 0)); then rm -rf "${PREFIX}"; fi
@@ -94,7 +122,7 @@ export PATH="${PREFIX}/bin:${PATH}"
 ## and our libs win over any LXQt the distro also has installed.
 rpath="${PREFIX}/lib"
 
-for name in "${selectedComponents[@]}"; do
+for name in "${selectedComponents[@]+"${selectedComponents[@]}"}"; do
 	srcDir="${REPO_ROOT}/work/src/${name}"; bld="${BUILD_DIR}/${name}"
 	[[ -d "${srcDir}" ]] || fDie "${name}: no source tree; run 'cicd/upstream.bash apply ${name}'"
 	extra=()
@@ -129,6 +157,16 @@ for name in "${selectedComponents[@]}"; do
 done
 
 
+if ((withSettings)); then
+	fSection "lxqtukz-settings"
+	## Cargo's cache sits in the tree, not under /usr, so the check below
+	## doesn't take it for a component installing outside the prefix.
+	CARGO_HOME="${REPO_ROOT}/work/cargo" cargo build --release --locked -j "${jobs}" \
+		--manifest-path "${REPO_ROOT}/source/settings/Cargo.toml" --target-dir "${BUILD_DIR}/settings"
+	install -Dm755 "${BUILD_DIR}/settings/release/lxqtukz-settings" "${PREFIX}/bin/lxqtukz-settings"
+fi
+
+
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 # Inside: check, stage, package
 
@@ -159,8 +197,13 @@ deps="$(
 		| xargs -r ldd 2>/dev/null | awk '/=> \// {print $3}' | grep -v "^${PREFIX}/" | sort -u \
 		| xargs -r -n1 readlink -f | xargs -r dpkg -S 2>/dev/null | cut -d: -f1 | sort -u
 )"
-## Run-time programs the session starts by name, which ldd can't see.
-deps="$(printf '%s\n' ${deps} dbus-x11 xwayland swaybg | sort -u)"
+## Run-time programs the session starts by name, and the QML modules the
+## settings app loads, none of which ldd can see.
+qml="qt6-wayland qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts
+	qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript
+	qml6-module-org-kde-desktop"
+# shellcheck disable=2086  ## Word splitting is the point: both are lists.
+deps="$(printf '%s\n' ${deps} ${qml} dbus-x11 xwayland swaybg | sort -u)"
 echo "${deps}" | sed 's/^/  /'
 
 fSection "Package"
@@ -170,9 +213,9 @@ tar -C "$(dirname "${PREFIX}")" -czf "${ARTIFACTS}/${base}.tar.gz" "${VERSION}"
 echo "${deps}" > "${ARTIFACTS}/${base}-deps.txt"
 ## One sums file per version, covering every target built for it so far.
 ( cd "${ARTIFACTS}" && sha256sum "lxqtukz-${VERSION}-"*.tar.gz "lxqtukz-${VERSION}-"*-deps.txt > "lxqtukz-${VERSION}-sha256sums.txt" )
-[[ -z "${HOST_UID:-}" ]] || chown -R "${HOST_UID}:${HOST_GID}" "${ARTIFACTS}" "${REPO_ROOT}/work/build"
 ls -l "${ARTIFACTS}" | sed 's/^/  /'
 
 
 ##	History:
 ##		- 2026-10-12: Created.
+##		- 2026-10-14: Builds the settings app.

@@ -1,0 +1,307 @@
+## LXQtukz Settings - what the app shows.
+##
+## Which tabs and rows exist, in what order, under which heading, what each row
+## edits, and the layout's measurements. It is compiled in, so an edit needs a
+## rebuild. The tests fail if a row names a setting the code does not know, or
+## leaves one out.
+##
+## How a value is read, written and converted (seconds shown as minutes, a
+## fraction shown as a percent) is code, in settings.rs.
+##
+## Measurements are in DIP, 1/96 inch. Qt scales them for the display. Most are
+## floors that content can outgrow: a long label widens the window rather than
+## being cut off.
+
+#•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+## Tabs
+#•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+
+## Down the left side, in order. "A/B" is tab B under tab A. A tab with tabs
+## under it has no rows of its own.
+tabs: ["Screensaver and power", "Keyboard", "Mouse and touchpad", "Mouse and touchpad/Mouse", "Mouse and touchpad/Touchpad"]
+
+#•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+## Layout
+#•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+
+layout:
+
+	## Window
+	pad: 18                    ## margin inside the content panel
+	buttons_gap: 14            ## last row -> footer buttons
+
+	## Tab list
+	tab_width: 150             ## floor; the widest title at its step-in wins
+	tab_pad: 12                ## clear space either side of a title
+	tab_pad_v: 8               ## a tab grows to the line height plus this
+	tab_indent: 16             ## step-in per level
+
+	## Rows
+	row_height: 32             ## floor for an ordinary row
+	row_pad: 10                ## a row grows to the line height plus this
+	header_pad: 12             ## a heading grows to the line height plus this
+	header_gap: 20             ## extra space above a heading that follows a group
+	subgroup_gap: 6            ## extra space above a row that leads a sub-group
+	indent: 18                 ## label step-in per sub-group level; controls stay put
+	label_width: 160           ## floor for the label column
+	label_gap: 16              ## clear space after the longest label
+	revert_width: 28           ## the revert arrow's column
+
+	## Controls
+	control_width: 300         ## floor for the control column
+	value_width: 64            ## number field beside a slider
+	text_width: 220            ## free-text field
+
+	## Footer
+	button_width: 84           ## floor
+	button_gap: 8
+
+## Flyover help for the footer buttons and the revert arrow. Every other tip is the `help:` line on
+## its row.
+help:
+	cancel: "Put back every change and close Settings."
+	apply: "Keep the changes, and leave Settings open."
+	ok: "Keep the changes and close Settings."
+	revert: "Put back the default."
+
+icons:
+	revert: "↺"
+	warning: "⚠"
+
+#•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+## Rows
+#•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
+
+## In screen order. A row's name is the setting it edits, as the code names it.
+## `kind: heading` starts a group and says which tab it is on.
+##
+## A sub-group is a row followed by rows at a greater `indent:`. Their labels
+## step right, and their controls stay in the one column.
+##
+## kind:      heading | toggle | slider | dropdown | text
+## label:     the row's name on screen; a unit goes on the end, as in "Delay, ms"
+## setting:   where the value lives, "wayfire:<section>/<option>"
+## range:     slider low, high, in the units shown
+## log:       the slider track is logarithmic, for a wide range of times
+## options:   dropdown captions, in order
+## values:    what each caption stores, in the same order
+## default:   shown when the file and the system have no default of their own
+## plugins:   Wayfire plugins the row needs; without them it is grayed out
+## indent:    sub-group depth of the label
+## help:      flyover text, for a row whose label does not explain it
+## warning:   a mark after the label, with this added to the flyover
+
+rows:
+
+	## ---------------------------------------------------- Screensaver and power
+
+	Screen:
+		kind: heading
+		label: Screen
+		tab: Screensaver and power
+
+	ScreenOff:
+		kind: toggle
+		label: Turn the screen off when idle
+		setting: "wayfire:idle/dpms_timeout"
+		plugins: [idle]
+		warning: "Some monitors ignore the request to turn off."
+
+	ScreenOffAfter:
+		kind: slider
+		label: "After, minutes"
+		range: [1, 240]
+		log: true
+		default: 10
+		indent: 1
+		setting: "wayfire:idle/dpms_timeout"
+		plugins: [idle]
+
+	Screensaver:
+		kind: toggle
+		label: Screensaver
+		setting: "wayfire:idle/screensaver_timeout"
+		plugins: [idle, cube]
+		help: "Wayfire's spinning-cube screensaver."
+
+	ScreensaverAfter:
+		kind: slider
+		label: "After, minutes"
+		range: [1, 240]
+		log: true
+		indent: 1
+		setting: "wayfire:idle/screensaver_timeout"
+		plugins: [idle, cube]
+
+	IdleFullscreen:
+		kind: toggle
+		label: Stay awake while a window is fullscreen
+		setting: "wayfire:idle/disable_on_fullscreen"
+		plugins: [idle]
+		help: "For video and games. The screen stays on and the screensaver waits."
+
+	## ----------------------------------------------------------------- Keyboard
+
+	Repeat:
+		kind: heading
+		label: Key repeat
+		tab: Keyboard
+
+	RepeatDelay:
+		kind: slider
+		label: "Delay, ms"
+		range: [100, 1000]
+		setting: "wayfire:input/kb_repeat_delay"
+		help: "How long a key is held before it starts to repeat."
+
+	RepeatRate:
+		kind: slider
+		label: "Rate, per second"
+		range: [1, 100]
+		setting: "wayfire:input/kb_repeat_rate"
+
+	Layout:
+		kind: heading
+		label: Layout
+		tab: Keyboard
+
+	XkbLayout:
+		kind: text
+		label: Layouts
+		setting: "wayfire:input/xkb_layout"
+		help: "XKB layout names, separated by commas, such as us,de."
+
+	XkbVariant:
+		kind: text
+		label: Variants
+		setting: "wayfire:input/xkb_variant"
+		help: "One variant per layout, separated by commas, such as dvorak. Blank for the standard one."
+
+	XkbOptions:
+		kind: text
+		label: Options
+		setting: "wayfire:input/xkb_options"
+		help: "XKB options separated by commas, such as caps:escape or grp:alt_shift_toggle."
+
+	NumLock:
+		kind: toggle
+		label: Num Lock on at login
+		setting: "wayfire:input/kb_numlock_default_state"
+
+	## ----------------------------------------------------------- Mouse
+
+	Mouse:
+		kind: heading
+		label: Mouse
+		tab: Mouse and touchpad/Mouse
+
+	MouseSpeed:
+		kind: slider
+		label: "Pointer speed, %"
+		range: [-100, 100]
+		setting: "wayfire:input/mouse_cursor_speed"
+		help: "0 is the device's own speed."
+
+	MouseAccel:
+		kind: dropdown
+		label: Acceleration
+		options: ["Device default", "None", "Adaptive", "Flat"]
+		values: [default, none, adaptive, flat]
+		setting: "wayfire:input/mouse_accel_profile"
+		help: "Adaptive speeds the pointer up as the mouse moves faster. Flat keeps one speed."
+
+	MouseScrollSpeed:
+		kind: slider
+		label: "Scroll speed, %"
+		range: [10, 500]
+		setting: "wayfire:input/mouse_scroll_speed"
+
+	MouseNatural:
+		kind: toggle
+		label: Natural scrolling
+		setting: "wayfire:input/mouse_natural_scroll"
+		help: "Content moves the way the wheel turns, as on a touchscreen."
+
+	MiddleEmulation:
+		kind: toggle
+		label: Left and right together click the middle button
+		setting: "wayfire:input/middle_emulation"
+
+	LeftHanded:
+		kind: toggle
+		label: Left-handed buttons
+		setting: "wayfire:input/left_handed_mode"
+		help: "Swaps the left and right buttons, on mice and touchpads both."
+
+	## ----------------------------------------------------------- Touchpad
+
+	Touchpad:
+		kind: heading
+		label: Touchpad
+		tab: Mouse and touchpad/Touchpad
+
+	TapToClick:
+		kind: toggle
+		label: Tap to click
+		setting: "wayfire:input/tap_to_click"
+
+	TouchpadSpeed:
+		kind: slider
+		label: "Pointer speed, %"
+		range: [-100, 100]
+		setting: "wayfire:input/touchpad_cursor_speed"
+		help: "0 is the device's own speed."
+
+	TouchpadAccel:
+		kind: dropdown
+		label: Acceleration
+		options: ["Device default", "None", "Adaptive", "Flat"]
+		values: [default, none, adaptive, flat]
+		setting: "wayfire:input/touchpad_accel_profile"
+
+	ClickMethod:
+		kind: dropdown
+		label: Right click
+		options: ["Device default", "Off", "Bottom-right corner", "2-finger click"]
+		values: [default, none, button-areas, clickfinger]
+		setting: "wayfire:input/click_method"
+		help: "How a click on a touchpad with no buttons becomes a right click."
+
+	Scrolling:
+		kind: heading
+		label: Scrolling
+		tab: Mouse and touchpad/Touchpad
+
+	ScrollMethod:
+		kind: dropdown
+		label: Scroll with
+		options: ["Device default", "Nothing", "2 fingers", "The edge", "A held button"]
+		values: [default, none, two-finger, edge, on-button-down]
+		setting: "wayfire:input/scroll_method"
+
+	TouchpadNatural:
+		kind: toggle
+		label: Natural scrolling
+		setting: "wayfire:input/natural_scroll"
+		help: "Content moves the way the fingers move, as on a touchscreen."
+
+	TouchpadScrollSpeed:
+		kind: slider
+		label: "Scroll speed, %"
+		range: [10, 500]
+		setting: "wayfire:input/touchpad_scroll_speed"
+
+	Disable:
+		kind: heading
+		label: Turn the touchpad off
+		tab: Mouse and touchpad/Touchpad
+
+	OffWhileTyping:
+		kind: toggle
+		label: While typing
+		setting: "wayfire:input/disable_touchpad_while_typing"
+
+	OffWithMouse:
+		kind: toggle
+		label: While a mouse is plugged in
+		setting: "wayfire:input/disable_touchpad_while_mouse"

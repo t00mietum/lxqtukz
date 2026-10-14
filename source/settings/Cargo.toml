@@ -1,0 +1,41 @@
+[package]
+name = "lxqtukz-settings"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "LXQtukz Settings, one app for the desktop's settings"
+license = "LGPL-2.1-or-later"
+repository = "https://github.com/t00mietum/lxqtukz"
+publish = false
+
+[dependencies]
+cxx = "1.0"
+cxx-qt = "0.10"
+cxx-qt-lib = { version = "0.10", features = ["qt_gui", "qt_qml", "qt_quickcontrols"] }
+# The bracketed arrays the declarations use are on shcl's dev branch, not yet
+# in a release. Move to the release that has them once it is out.
+shcl = { git = "https://github.com/jim-collier/shcl", rev = "9effd271996a9c9958c373a8f34db214c6083f22" }
+
+[build-dependencies]
+cxx-qt-build = "0.10"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_precision_loss = "allow"
+cast_possible_wrap = "allow"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
+float_cmp = "allow"
+
+[profile.release]
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+debug = "line-tables-only"
