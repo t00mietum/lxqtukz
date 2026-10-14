@@ -72,6 +72,14 @@ In each section, items are listed approximately from newest to oldest. A patch i
 
 ### Milestone 3 - All settings in one place
 
+- 🔘 Start work on a unified settings application, ala KDE. This will be our own, we'll eventually remove all other individual OS & desktop settings applications.
+	- Our desktop app (for icons and wallpaper management), 'tukzdesk' will have its own settings app, which we'll remove, and use its exposed API from this new settings app.
+
+- 🔘 Settings, implement in order of priority:
+	- Need a screensaver manager and screen power management app. Something simple and intuitive, like XFCE4's, but integrated into the settings app.
+	- Keyboard settings (delay, speed, shortcuts). Like XFCE4's, but integrated into the settings app.
+	- Mouse settings. Like XFCE4's, but integrated into the settings app.
+
 - 🔘 List every config path in every component. Search all pinned sources for `QSettings(`, `XdgDirs::configHome`, `"lxqt"` and `.config/`. Mark each as covered by the liblxqt patch or needing its own.
 
 - 🔘 pcmanfm-qt and libfm-qt: move settings from `~/.config/pcmanfm-qt/<profile>/` under `LXQT_CONFIG_NAME`, by patch or by setting the profile.
