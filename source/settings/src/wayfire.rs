@@ -3,6 +3,10 @@
 
 //! Wayfire's settings: the user's `wayfire.ini`, and the defaults under it.
 //!
+//! The file is the one the running Wayfire was started with, from
+//! `WAYFIRE_CONFIG_FILE`, so the app works in whichever Wayfire session it is
+//! run from. With that unset it is `~/.config/lxqtukz/wayfire.ini`.
+//!
 //! Wayfire reads one file with no layers. The session seeds the user's copy
 //! from the admin's or the release's, so a default here is the value in the
 //! first of those found, and past that Wayfire's own default from its plugin
@@ -18,6 +22,8 @@ use std::path::{Path, PathBuf};
 /// at a scratch tree.
 #[derive(Clone)]
 pub struct Xdg {
+	/// `WAYFIRE_CONFIG_FILE`, when set.
+	pub wayfire_file: Option<PathBuf>,
 	pub config_home: PathBuf,
 	pub config_dirs: Vec<PathBuf>,
 	pub data_dirs: Vec<PathBuf>,
@@ -38,6 +44,9 @@ impl Xdg {
 	pub fn from_env() -> Xdg {
 		let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
 		Xdg {
+			wayfire_file: std::env::var_os("WAYFIRE_CONFIG_FILE")
+				.filter(|v| !v.is_empty())
+				.map(PathBuf::from),
 			config_home: std::env::var_os("XDG_CONFIG_HOME")
 				.filter(|v| !v.is_empty())
 				.map_or_else(|| home.join(".config"), PathBuf::from),
@@ -61,7 +70,10 @@ pub struct Wayfire {
 
 impl Wayfire {
 	pub fn open(xdg: &Xdg) -> Wayfire {
-		let path = xdg.config_home.join("lxqtukz/wayfire.ini");
+		let path = xdg
+			.wayfire_file
+			.clone()
+			.unwrap_or_else(|| xdg.config_home.join("lxqtukz/wayfire.ini"));
 		let read = |p: &Path| fs::read_to_string(p).ok().map(|t| Ini::parse(&t));
 		Wayfire {
 			user: read(&path).unwrap_or_else(|| Ini::parse("")),
@@ -282,6 +294,7 @@ pub mod tests {
 
 		pub fn xdg(&self) -> Xdg {
 			Xdg {
+				wayfire_file: None,
 				config_home: self.root.join("home"),
 				config_dirs: vec![self.root.join("etc")],
 				data_dirs: vec![self.root.join("data")],
@@ -388,6 +401,28 @@ pub mod tests {
 			.unwrap_err();
 		assert!(err.0.contains("Line 3"), "{err:?}");
 		assert_eq!(s.user_file(), text);
+	}
+
+	#[test]
+	fn the_running_wayfire_s_file_wins() {
+		let s = Scratch::new("session", Some("[input]\nkb_repeat_delay = 400\n"), None);
+		let session = s.root.join("session.ini");
+		fs::write(&session, "[input]\nkb_repeat_delay = 250\n").unwrap();
+		let mut xdg = s.xdg();
+		xdg.wayfire_file = Some(session.clone());
+		let mut wf = Wayfire::open(&xdg);
+		assert_eq!(wf.get("input", "kb_repeat_delay").as_deref(), Some("250"));
+		wf.write(&[("input".into(), "kb_repeat_delay".into(), Some("300".into()))])
+			.unwrap();
+		assert_eq!(
+			fs::read_to_string(&session).unwrap(),
+			"[input]\nkb_repeat_delay = 300\n"
+		);
+		assert_eq!(
+			s.user_file(),
+			"[input]\nkb_repeat_delay = 400\n",
+			"the lxqtukz file is left alone"
+		);
 	}
 
 	#[test]

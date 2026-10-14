@@ -14,11 +14,9 @@
 ##	            The compositor uses the GPU render node when there is one.
 ##	    keys    drives the app from the keyboard on that same Wayfire, and
 ##	            checks what reaches wayfire.ini after each step
-##	    dogfood copies the release build, as plain lxqtukz-settings, into the
-##	            first dogfood dir that exists, and keeps a symlink of the same
-##	            name in ~/.local/bin so it is on the PATH. Runs on the host,
-##	            last. Only the latest is kept, and the copy is skipped while
-##	            that binary is running.
+##	    dogfood copies the release build to ~/.local/bin/lxqtukz-settings.
+##	            Runs on the host, last. Only the latest is kept, and the copy
+##	            is skipped while that binary is running.
 ##	- Syntax: cicd/settings.bash [--here] [fmt] [check] [build] [gui] [keys] [dogfood]
 ##	History: At bottom of script.
 
@@ -53,11 +51,10 @@ while (($#)); do case "$1" in
 esac; done
 ((${#stages[@]})) || stages=(check build gui keys dogfood)
 
-## The first of these that exists gets the dogfood copy.
-DOGFOOD_DIRS=("${HOME}/synced/0-0/common/exec/app/linux")
+## The first of these that exists gets the dogfood copy. Local, not synced:
+## this box is the only one it is tried on.
+DOGFOOD_DIRS=("${HOME}/.local/bin")
 DOGFOOD_NAME="lxqtukz-settings"
-## Where the bare name goes on the PATH, as a symlink to the dogfood copy.
-DOGFOOD_LINK_DIR="${HOME}/.local/bin"
 
 ## True if a running process is executing this file. Linux refuses to open a
 ## running program for writing ("Text file busy"), whoever asks. Reading
@@ -81,7 +78,8 @@ fStage_dogfood(){
 		return 0
 	fi
 	local dest="${dir}/${DOGFOOD_NAME}"
-	if cmp -s "${built}" "${dest}"; then
+	## A symlink there, as an older stage left, is replaced by the file itself.
+	if [[ ! -L "${dest}" ]] && cmp -s "${built}" "${dest}"; then
 		fEcho "already current: ${dest}"
 	elif fInUse "${dest}"; then
 		fEcho "skipped: ${dest} is running; close it and run the dogfood stage again"
@@ -95,18 +93,6 @@ fStage_dogfood(){
 		chgrp "$(stat -c %g "${dir}")" "${temp}" 2>/dev/null || true
 		mv -f "${temp}" "${dest}"
 		fEcho "installed: ${dest}"
-	fi
-
-	## A symlink, never a file of its own, so there is one copy to update.
-	local link="${DOGFOOD_LINK_DIR}/${DOGFOOD_NAME}"
-	if [[ ! -d "${DOGFOOD_LINK_DIR}" ]]; then
-		fEcho "no link: ${DOGFOOD_LINK_DIR} does not exist"
-	elif [[ -e "${link}" && ! -L "${link}" ]]; then
-		fEcho "no link: ${link} is already there as a plain file; left alone"
-	elif [[ "$(readlink "${link}" || true)" != "${dest}" ]]; then
-		ln -sfn "${dest}" "${link}"
-		chgrp -h "$(stat -c %g "${DOGFOOD_LINK_DIR}")" "${link}" 2>/dev/null || true
-		fEcho "linked: ${link} -> ${dest}"
 	fi
 }
 
@@ -185,9 +171,12 @@ fCompositor_Start(){
 	fSection "Headless Wayfire"
 	run="$(mktemp -d "/tmp/test_lxqtukz-settings_$(date +%Y%m%d-%H%M%S%2N)_XXXX")"
 	export XDG_RUNTIME_DIR="${run}/runtime" XDG_CONFIG_HOME="${run}/config"
-	mkdir -p "${XDG_RUNTIME_DIR}" "${XDG_CONFIG_HOME}/lxqtukz"
+	mkdir -p "${XDG_RUNTIME_DIR}" "${XDG_CONFIG_HOME}" "${run}/session"
 	chmod 700 "${XDG_RUNTIME_DIR}"
-	ini="${XDG_CONFIG_HOME}/lxqtukz/wayfire.ini"
+	## Somewhere other than ~/.config/lxqtukz/, as in a stock LXQt session, so
+	## a run only passes if the app follows WAYFIRE_CONFIG_FILE.
+	ini="${run}/session/wayfire.ini"
+	export WAYFIRE_CONFIG_FILE="${ini}"
 	fIni_Reset
 	export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 _WAYFIRE_SOCKET="${run}/wayfire.socket"
 	if [[ -r /dev/dri/renderD128 ]]; then
@@ -371,3 +360,4 @@ fEcho "done: ${stages[*]}"
 ##	History:
 ##		- 2026-10-14: Created.
 ##		- 2026-10-14: Dogfood stage, and every stage by default.
+##		- 2026-10-14: Dogfood to ~/.local/bin, and the session's Wayfire file in tests.
