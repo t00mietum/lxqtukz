@@ -453,7 +453,7 @@ ApplicationWindow {
 					text: decl.icons.revert
 					horizontalAlignment: Text.AlignHCenter
 					verticalAlignment: Text.AlignVCenter
-					color: row.atDefault ? win.palette.windowText : win.palette.accent
+					color: row.atDefault ? win.palette.windowText : win.palette.highlight
 					opacity: row.atDefault ? 0.35 : 1
 				}
 				onClicked: backend.revert(spec.name)
