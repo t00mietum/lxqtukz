@@ -159,6 +159,6 @@ LXQt is the work of the [LXQt project](https://lxqt-project.org/) and its many c
 
 - Build, install, and helper scripts are MIT, as their headers say.
 
-> Copyright © 2026 t00mietum (ID: f⍒Ê🝅ĜᛎỹqFẅ▿⍢Ŷ‡ʬẼᛏ🜣)<br>
+> Copyright © 2026 t00mietum (CryptogID: ปʬϝღถɔ4რఠΔթะ9ƾǝu)<br>
 > Upstream code Copyrights © [LXQt authors](https://github.com/lxqt) and [Wayfire authors](https://github.com/WayfireWM).<br />
 > Licensed under [GNU LGPL v2.1 or later](https://spdx.org/licenses/LGPL-2.1-or-later.html) license. No warranty.
