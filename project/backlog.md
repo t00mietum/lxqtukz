@@ -106,6 +106,12 @@ In each section, items are listed approximately from newest to oldest. A patch i
 
 ### Misc to-do
 
+- 🔘 Create one shcl theme file per personality, and generate all of that personality's theming from it.
+	- Note: tukzedo's own apps, such as silkterm, captain-nemo, the desktop layer and maybe a panel, aren't Qt. Kvantum alone can no longer style a personality.
+	- Generated from it: the Kvantum style for other Qt apps, a GTK theme, the style for tukzedo's own apps, silkterm's colors and fonts, and Wayfire's window decorations.
+	- Note: try the Rust toolkit for captain-nemo and any panel against two very different personalities, such as Windows XP and macOS, before writing much of either.
+	- Note: the personalities item itself is in the tukzedo-linux backlog.
+
 - 🔘 Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 
 - 🔘 Updater: show the release's changelog section before asking to switch.

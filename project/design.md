@@ -253,3 +253,5 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 - 2026-10-12: Wayfire's bundled wlroots was chosen over a system one, because no target distro has wlroots 0.20 yet.
 
 - 2026-10-12: LGPL-2.1-or-later was chosen for our own desktop code because it matches LXQt, so code can move both ways without relicensing. Scripts are MIT, like the other t00mietum scripts.
+
+- 2026-10-14: LXQt stays the base rather than COSMIC, for now. tukzedo plans its own settings app, file manager, terminal and desktop layer, and maybe a panel, which leaves the base supplying the compositor and session plumbing. Wayfire's plugins and lxqt-qtplugin's theming of other Qt apps suit the personalities better than cosmic-comp, which is built for COSMIC's own shell.
