@@ -4,7 +4,7 @@
 
 ##	- Purpose: Checks, builds and tries out the settings app (source/settings/),
 ##	  in the test container unless --here is given.
-##	- Stages, run in the order given, default check:
+##	- Stages, run in the order given. With none named, all but fmt run:
 ##	    fmt     rewrites the code the way rustfmt wants it
 ##	    check   shellcheck on this script, rustfmt, clippy with warnings as
 ##	            errors, and the unit tests
@@ -14,7 +14,12 @@
 ##	            The compositor uses the GPU render node when there is one.
 ##	    keys    drives the app from the keyboard on that same Wayfire, and
 ##	            checks what reaches wayfire.ini after each step
-##	- Syntax: cicd/settings.bash [--here] [fmt] [check] [build] [gui] [keys]
+##	    dogfood copies the release build, as plain lxqtukz-settings, into the
+##	            first dogfood dir that exists, and keeps a symlink of the same
+##	            name in ~/.local/bin so it is on the PATH. Runs on the host,
+##	            last. Only the latest is kept, and the copy is skipped while
+##	            that binary is running.
+##	- Syntax: cicd/settings.bash [--here] [fmt] [check] [build] [gui] [keys] [dogfood]
 ##	History: At bottom of script.
 
 ##	Copyright © 2026 t00mietum (CryptogID: ปʬϝღถɔ4რఠΔթะ9ƾǝu)
@@ -42,11 +47,68 @@ declare -i here=0
 stages=()
 while (($#)); do case "$1" in
 	--here) here=1; shift ;;
-	fmt|check|build|gui|keys) stages+=("$1"); shift ;;
+	fmt|check|build|gui|keys|dogfood) stages+=("$1"); shift ;;
 	-h|--help) sed -n '/^##\t- Purpose/,/^##\tHistory/p' "${BASH_SOURCE[0]}" | sed 's/^##\t\{0,1\}//'; exit 0 ;;
 	*) fDie "unknown argument: $1" ;;
 esac; done
-((${#stages[@]})) || stages=(check)
+((${#stages[@]})) || stages=(check build gui keys dogfood)
+
+## The first of these that exists gets the dogfood copy.
+DOGFOOD_DIRS=("${HOME}/synced/0-0/common/exec/app/linux")
+DOGFOOD_NAME="lxqtukz-settings"
+## Where the bare name goes on the PATH, as a symlink to the dogfood copy.
+DOGFOOD_LINK_DIR="${HOME}/.local/bin"
+
+## True if a running process is executing this file. Linux refuses to open a
+## running program for writing ("Text file busy"), whoever asks. Reading
+## /proc/*/exe would not do: under `sg docker` this script's group differs from
+## the program's, and the kernel then hides each process's exe link.
+fInUse(){ ## file
+	[[ -f "$1" && -w "$1" ]] || return 1
+	if (: >> "$1") 2>/dev/null; then return 1; fi
+	return 0
+}
+
+fStage_dogfood(){
+	fSection "Dogfood"
+	local built="${TARGET_DIR}/release/${DOGFOOD_NAME}" dir="" d
+	[[ -x "${built}" ]] || fDie "no release build at ${built}"
+	for d in "${DOGFOOD_DIRS[@]}"; do
+		if [[ -d "${d}" && -w "${d}" ]]; then dir="${d}"; break; fi
+	done
+	if [[ -z "${dir}" ]]; then
+		fEcho "skipped: none of these exists: ${DOGFOOD_DIRS[*]}"
+		return 0
+	fi
+	local dest="${dir}/${DOGFOOD_NAME}"
+	if cmp -s "${built}" "${dest}"; then
+		fEcho "already current: ${dest}"
+	elif fInUse "${dest}"; then
+		fEcho "skipped: ${dest} is running; close it and run the dogfood stage again"
+	else
+		## Through a temporary name and a rename, so the bare name is never a
+		## half-copied file.
+		local temp="${dir}/.${DOGFOOD_NAME}.$$.tmp"
+		cp -f "${built}" "${temp}"
+		chmod 0755 "${temp}"
+		## The dir's group, not whatever group this run happens to have.
+		chgrp "$(stat -c %g "${dir}")" "${temp}" 2>/dev/null || true
+		mv -f "${temp}" "${dest}"
+		fEcho "installed: ${dest}"
+	fi
+
+	## A symlink, never a file of its own, so there is one copy to update.
+	local link="${DOGFOOD_LINK_DIR}/${DOGFOOD_NAME}"
+	if [[ ! -d "${DOGFOOD_LINK_DIR}" ]]; then
+		fEcho "no link: ${DOGFOOD_LINK_DIR} does not exist"
+	elif [[ -e "${link}" && ! -L "${link}" ]]; then
+		fEcho "no link: ${link} is already there as a plain file; left alone"
+	elif [[ "$(readlink "${link}" || true)" != "${dest}" ]]; then
+		ln -sfn "${dest}" "${link}"
+		chgrp -h "$(stat -c %g "${DOGFOOD_LINK_DIR}")" "${link}" 2>/dev/null || true
+		fEcho "linked: ${link} -> ${dest}"
+	fi
+}
 
 
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
@@ -64,12 +126,24 @@ if ((! here)); then
 	if [[ -e /dev/dri/renderD128 ]]; then
 		gpu=(--device /dev/dri --group-add "$(stat -c %g /dev/dri/renderD128)")
 	fi
-	exec docker run --rm -i \
-		-v "${REPO_ROOT}:/src" -w /src \
-		--user "$(id -u):$(id -g)" \
-		-e HOME=/tmp -e CARGO_HOME=/src/work/cargo -e KEYS_TRACE="${KEYS_TRACE:-0}" \
-		"${gpu[@]+"${gpu[@]}"}" \
-		"${TEST_IMAGE}" /src/cicd/settings.bash --here "${stages[@]}"
+	## Dogfood happens here on the host, after the rest. It needs a release
+	## build, which costs nothing when the last one is still current.
+	inside=() dogfood=0
+	for stage in "${stages[@]}"; do
+		if [[ "${stage}" == dogfood ]]; then dogfood=1; else inside+=("${stage}"); fi
+	done
+	if ((dogfood)) && [[ " ${inside[*]} " != *" build "* ]]; then inside+=(build); fi
+	if ((${#inside[@]})); then
+		docker run --rm -i \
+			-v "${REPO_ROOT}:/src" -w /src \
+			--user "$(id -u):$(id -g)" \
+			-e HOME=/tmp -e CARGO_HOME=/src/work/cargo -e KEYS_TRACE="${KEYS_TRACE:-0}" \
+			"${gpu[@]+"${gpu[@]}"}" \
+			"${TEST_IMAGE}" /src/cicd/settings.bash --here "${inside[@]}"
+	fi
+	((! dogfood)) || fStage_dogfood
+	fEcho "done: ${stages[*]}"
+	exit 0
 fi
 
 
@@ -296,3 +370,4 @@ fEcho "done: ${stages[*]}"
 
 ##	History:
 ##		- 2026-10-14: Created.
+##		- 2026-10-14: Dogfood stage, and every stage by default.

@@ -84,7 +84,7 @@ It follows upstream releases for as long as the project lives. The patches may g
 	- `source/settings/`: the settings app, `lxqtukz-settings`. Its design is in [design_docs/20260930-145721_settings-dialog.md](design_docs/20260930-145721_settings-dialog.md).
 
 - `cicd/`: `upstream.bash` for tracking and patch queues, `build.bash` for the Debian build, `linux/Dockerfile` for the build container, and shared helpers in `utility/`, including `stage-prefix.bash`.
-	- `settings.bash` checks the settings app and runs it on a headless Wayfire, in the test container from `linux/Dockerfile.test`.
+	- `settings.bash` checks the settings app and runs it on a headless Wayfire, in the test container from `linux/Dockerfile.test`. Last, on the host, it puts the release build in the dogfood dir as plain `lxqtukz-settings`, linked from `~/.local/bin`. Only the latest is kept.
 
 - `nix/`: overlay, package and NixOS module. `flake.nix` is at the root.
 
