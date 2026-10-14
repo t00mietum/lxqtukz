@@ -74,7 +74,7 @@ In each section, items are listed approximately from newest to oldest. A patch i
 
 - 🔘 Start work on a unified settings application, ala KDE. This will be our own, we'll eventually remove all other individual OS & desktop settings applications.
 	- Our desktop app (for icons and wallpaper management), 'tukzdesk' will have its own settings app, which we'll remove, and use its exposed API from this new settings app.
-	- Baseline design: `design_docs/20260930-145721_settings-dialog.md`, copied from silkterm. Tabs will be on the left.
+	- Baseline design: `design_docs/20260930-145721_settings-dialog.md`, adapted from silkterm. Tabs will be on the left.
 
 - 🔘 Settings, implement in order of priority:
 	- Need a screensaver manager and screen power management app. Something simple and intuitive, like XFCE4's, but integrated into the settings app.
