@@ -140,6 +140,8 @@ LXQt 2.4 and Wayfire 0.11.0 are pinned. Build order is the order of lines in `co
 
 - lxqt-qtplugin and libqtxdg put their Qt plugins in the prefix, under `lib/qt6/plugins`, rather than in Qt's own plugin dir. The session adds that dir to `QT_PLUGIN_PATH`.
 
+- liblxqt's polkit action for the backlight helper goes in the prefix too, under `share/polkit-1/actions`. polkitd only reads `/usr/share/polkit-1/actions`, so it has no effect until the installer links it there. That's in the backlog.
+
 - `lxqt-wayland-session` is built for its Wayfire defaults (`lxqt-wayfire.ini`) and helper scripts. Its launcher is replaced by ours.
 
 - wf-shell, labwc and the other compositors aren't built. LXQt's panel is the shell.
@@ -181,6 +183,8 @@ Some components keep settings outside `LXQt::Settings` and aren't covered yet: p
 - It puts the prefix's D-Bus service files in the bus's runtime dir, `$XDG_RUNTIME_DIR/dbus-1/services`. A bus that systemd started before login only knows the service dirs it saw then, but it reads the runtime dir whenever a name it doesn't know is asked for. The `SystemdService=` line is dropped, since systemd can't see the units in the prefix, so the bus starts the program itself. For now that's only the LXQt portal.
 
 - It hands `XDG_DATA_DIRS`, `XDG_CURRENT_DESKTOP` and a few more to D-Bus and the systemd user manager. Debian's `xdg-desktop-portal` runs as a systemd user service, and finds `lxqt.portal` and `lxqt-portals.conf` in the prefix through them. lxqt-session hands over the rest of the session's environment once Wayfire is up, but only to D-Bus.
+
+- lxqt-session starts the portal as Qt starts up, before it hands over that environment. So the release's `wayfire.ini` hands `WAYLAND_DISPLAY` and `DISPLAY` to D-Bus and systemd on the `session` line, just before `lxqt-session`. Without it the LXQt portal finds no display and dies, and xdg-desktop-portal leaves its file chooser out for the rest of the session.
 
 - It sets up the user's `wayfire.ini` with upstream's keyboard layout guess, then runs `exec wayfire -c` on it. Wayfire's `[autostart]` starts `lxqt-session`.
 

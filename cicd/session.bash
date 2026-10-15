@@ -172,16 +172,22 @@ if [[ ! -x /usr/libexec/xdg-desktop-portal ]]; then
 	fCheck "xdg-desktop-portal finds our portal" fail "not installed in the test image"
 else
 	fCall StartServiceByName org.freedesktop.portal.Desktop 0 >/dev/null 2>&1 || true
-	## Only portals with a backend get exported; FileChooser comes from ours.
-	interfaces="$(gdbus introspect --session -d org.freedesktop.portal.Desktop -o /org/freedesktop/portal/desktop 2>&1 | grep -o 'interface org\.freedesktop\.portal\.[A-Za-z]*' | sort -u || true)"
-	if grep -q 'portal\.FileChooser$' <<< "${interfaces}"; then fCheck "xdg-desktop-portal finds our portal" ok; else
+	## Only portals with a backend get exported, FileChooser from ours. That
+	## happens a moment after the portal takes its name.
+	fFileChooser(){
+		gdbus introspect --session -d org.freedesktop.portal.Desktop -o /org/freedesktop/portal/desktop 2>/dev/null \
+			> "${run}/portal.introspect" || true
+		grep -q 'interface org\.freedesktop\.portal\.FileChooser ' "${run}/portal.introspect"
+	}
+	if fWaitFor fFileChooser; then fCheck "xdg-desktop-portal finds our portal" ok; else
 		fCheck "xdg-desktop-portal finds our portal" fail "no FileChooser"
 	fi
 fi
 
 fStopAll
 if ((failed)); then
-	fEcho "logs in ${run} (inside the container)"
+	## Services the bus starts log to the bus's own output.
+	tail -n 40 "${run}/bus.log" >&2
 	tail -n 30 "${run}/session.log" >&2
 	fDie "${failed} check(s) failed"
 fi

@@ -129,7 +129,7 @@ if [[ ! -f "${wayfireIni}" ]]; then
 		[[ -r "${seed}" ]] || continue
 		cp "${seed}" "${wayfireIni}"
 		## Same keyboard guess upstream makes, and only on first seed.
-		layout="${LANG:0:2}"
+		layout="${LANG:-}"; layout="${layout:0:2}"
 		if [[ -n "${layout}" ]] && grep -A98 '! layout' /usr/share/X11/xkb/rules/base.lst 2>/dev/null | awk '{print $1}' | grep -qx "${layout}"; then
 			sed -i -e '/^xkb_layout[[:space:]]*=/d' -e "/^\[input\]/a xkb_layout = ${layout}" "${wayfireIni}"
 		fi

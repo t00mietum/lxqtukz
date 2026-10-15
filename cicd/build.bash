@@ -211,12 +211,13 @@ deps="$(
 		| xargs -r -n1 readlink -f | xargs -r dpkg -S 2>/dev/null | cut -d: -f1 | sort -u
 )"
 ## Run-time programs the session starts by name, and the QML modules the
-## settings app loads, none of which ldd can see.
+## settings app loads, none of which ldd can see. killall is in wayfire.ini's
+## [autostart], and xdg-desktop-portal is what runs our portal.
 qml="qt6-wayland qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts
 	qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript
 	qml6-module-org-kde-desktop"
 # shellcheck disable=2086  ## Word splitting is the point: both are lists.
-deps="$(printf '%s\n' ${deps} ${qml} dbus-x11 xwayland swaybg | sort -u)"
+deps="$(printf '%s\n' ${deps} ${qml} dbus-x11 dbus-bin xwayland swaybg psmisc xdg-desktop-portal | sort -u)"
 echo "${deps}" | sed 's/^/  /'
 
 fSection "Package"

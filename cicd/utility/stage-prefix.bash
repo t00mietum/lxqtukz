@@ -80,6 +80,12 @@ cp -L --no-preserve=mode "${upstreamWayfire}" "${vendor}/wayfire.ini"
 ## LXQTUKZ_PREFIX, so the user's copy follows whichever version is running.
 # shellcheck disable=2016  ## Expanded later, by the shell Wayfire starts.
 sed -i 's|/usr/share/lxqt/|${LXQTUKZ_PREFIX}/share/lxqt/|g' "${vendor}/wayfire.ini"
+## lxqt-session starts the portal as Qt starts up, before it hands D-Bus the
+## session's environment, so the portal's LXQt backend found no display, died,
+## and the session went without it. Hand the display over first.
+grep -q '^session[[:space:]]*=[[:space:]]*lxqt-session' "${vendor}/wayfire.ini" \
+	|| fDie "wayfire.ini has no 'session = lxqt-session' line to start the display hand-over from"
+sed -i 's|^session\([[:space:]]*\)=[[:space:]]*lxqt-session|session\1= dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY; lxqt-session|' "${vendor}/wayfire.ini"
 wayfireActive="$(awk '!/^[[:space:]]*#/' "${vendor}/wayfire.ini")"
 ## A /usr path is fine for what Debian has, and wrong for what the prefix has.
 while read -r used; do

@@ -1,0 +1,4 @@
+##	Extra configure arguments for liblxqt, one per line.
+##	Relative, so the backlight helper's polkit action stays in the prefix. polkitd
+##	only reads /usr/share/polkit-1/actions, so it has to be linked there to take effect.
+-DPOLKIT_ACTIONS_DIR=share/polkit-1/actions
