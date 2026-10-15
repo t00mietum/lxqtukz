@@ -1,0 +1,3 @@
+##	Extra configure arguments for libqtxdg, one per line.
+##	Relative, so the icon engine goes under the install prefix rather than in Qt's own plugin dir.
+-DQTXDGX_ICONENGINEPLUGIN_INSTALL_PATH=lib/qt6/plugins/iconengines

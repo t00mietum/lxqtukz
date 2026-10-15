@@ -75,6 +75,26 @@ done
 upstreamWayfire="${prefix}/share/lxqt/wayland/lxqt-wayfire.ini"
 [[ -f "${upstreamWayfire}" ]] || fDie "missing ${upstreamWayfire}; was lxqt-wayland-session built?"
 cp -L --no-preserve=mode "${upstreamWayfire}" "${vendor}/wayfire.ini"
+## Upstream's file starts things from LXQt under /usr, such as the wallpaper.
+## Wayfire runs those lines through sh, and startlxqtukz exports
+## LXQTUKZ_PREFIX, so the user's copy follows whichever version is running.
+# shellcheck disable=2016  ## Expanded later, by the shell Wayfire starts.
+sed -i 's|/usr/share/lxqt/|${LXQTUKZ_PREFIX}/share/lxqt/|g' "${vendor}/wayfire.ini"
+## lxqt-session starts the portal as Qt starts up, before it hands D-Bus the
+## session's environment, so the portal's LXQt backend found no display, died,
+## and the session went without it. Hand the display over first.
+grep -q '^session[[:space:]]*=[[:space:]]*lxqt-session' "${vendor}/wayfire.ini" \
+	|| fDie "wayfire.ini has no 'session = lxqt-session' line to start the display hand-over from"
+sed -i 's|^session\([[:space:]]*\)=[[:space:]]*lxqt-session|session\1= dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY; lxqt-session|' "${vendor}/wayfire.ini"
+wayfireActive="$(awk '!/^[[:space:]]*#/' "${vendor}/wayfire.ini")"
+## A /usr path is fine for what Debian has, and wrong for what the prefix has.
+while read -r used; do
+	[[ -z "${used}" || ! -e "${prefix}/${used}" ]] || fDie "wayfire.ini uses /usr/${used}, which the prefix has"
+done < <(grep -oE '/usr/[^[:space:]"'\'']+' <<< "${wayfireActive}" | sed 's|^/usr/||' || true)
+# shellcheck disable=2016  ## The variable name is the text being matched.
+while read -r used; do
+	[[ -z "${used}" || -e "${prefix}/${used}" ]] || fDie "wayfire.ini uses ${used}, which is not in the prefix"
+done < <(grep -oE '\$\{LXQTUKZ_PREFIX\}/[^[:space:]"'\'']+' <<< "${wayfireActive}" | sed 's|^\${LXQTUKZ_PREFIX}/||' || true)
 cp -RL --no-preserve=mode "${src}/etc/xdg/lxqtukz/." "${vendor}/"
 
 ## Only Wayfire is offered, so upstream's compositor chooser has nothing to choose.
@@ -101,6 +121,8 @@ mkdir -p "$(dirname "${manifest}")"; rm -f "${manifest}"
 	echo "LXQTUKZ_TARGET=${target}"
 	echo "## component ref commit patches"
 	for name in "${componentNames[@]}"; do
+		## Debian-only rows are nixpkgs' own on NixOS.
+		[[ "${target}" != nixos || "${componentNix[${name}]}" != - ]] || continue
 		echo "COMPONENT ${name} ${componentRef[${name}]} ${componentCommit[${name}]} $(fComponents_Patches "${name}" | grep -c . || true)"
 	done
 } > "${manifest}"
@@ -110,3 +132,4 @@ fEcho "staged ${prefix} (${version}, ${target})"
 
 ##	History:
 ##		- 2026-10-12: Created.
+##		- 2026-10-14: wayfire.ini paths under /usr point at the prefix.

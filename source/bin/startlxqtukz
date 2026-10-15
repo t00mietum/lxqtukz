@@ -88,6 +88,29 @@ if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
 	fi
 fi
 
+## A bus systemd started before login only looks for services in the dirs it
+## read then, never the prefix. Its runtime dir is read when a name is asked
+## for, so ours go there. SystemdService goes, since systemd can't see the
+## units in the prefix; the bus starts the program itself, with the environment
+## lxqt-session hands it. Marked, so the next login clears what we left.
+if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
+	busDir="${XDG_RUNTIME_DIR}/dbus-1/services"
+	mkdir -p "${busDir}"
+	for svc in "${busDir}"/*.service; do
+		[[ -e "${svc}" ]] || continue
+		[[ "$(head -n1 "${svc}")" != "# lxqtukz" ]] || rm -f "${svc}"
+	done
+	for svc in "${LXQTUKZ_PREFIX}"/share/dbus-1/services/*.service; do
+		[[ -e "${svc}" ]] || continue
+		{ echo "# lxqtukz"; sed '/^SystemdService=/d' "${svc}"; } > "${busDir}/${svc##*/}"
+	done
+fi
+## Debian's xdg-desktop-portal is a systemd user service. It finds lxqt.portal
+## and lxqt-portals.conf through XDG_DATA_DIRS, and picks by XDG_CURRENT_DESKTOP.
+dbus-update-activation-environment --systemd XDG_DATA_DIRS XDG_CONFIG_DIRS XDG_CURRENT_DESKTOP \
+	XDG_SESSION_DESKTOP XDG_SESSION_TYPE DESKTOP_SESSION LXQT_CONFIG_NAME LXQTUKZ_PREFIX \
+	|| fLog "dbus-update-activation-environment failed"
+
 if type systemd-detect-virt >/dev/null 2>&1 && systemd-detect-virt --quiet; then
 	export WLR_NO_HARDWARE_CURSORS=1
 fi
@@ -106,7 +129,7 @@ if [[ ! -f "${wayfireIni}" ]]; then
 		[[ -r "${seed}" ]] || continue
 		cp "${seed}" "${wayfireIni}"
 		## Same keyboard guess upstream makes, and only on first seed.
-		layout="${LANG:0:2}"
+		layout="${LANG:-}"; layout="${layout:0:2}"
 		if [[ -n "${layout}" ]] && grep -A98 '! layout' /usr/share/X11/xkb/rules/base.lst 2>/dev/null | awk '{print $1}' | grep -qx "${layout}"; then
 			sed -i -e '/^xkb_layout[[:space:]]*=/d' -e "/^\[input\]/a xkb_layout = ${layout}" "${wayfireIni}"
 		fi
@@ -121,3 +144,4 @@ exec wayfire -c "${wayfireIni}"
 
 ##	History:
 ##		- 2026-10-12: Created.
+##		- 2026-10-14: D-Bus services and the portal come from the prefix.

@@ -1,0 +1,4 @@
+##	Extra configure arguments for libdrm, one per line.
+##	Only the core library; the GPU-specific ones stay Debian's, as wlroots builds it.
+-Dauto_features=disabled
+-Dtests=false

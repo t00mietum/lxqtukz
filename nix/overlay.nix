@@ -16,7 +16,8 @@ let
 
   fields = line: builtins.filter (x: builtins.isString x && x != "") (builtins.split "[[:space:]]+" line);
 
-  components = map (line:
+  ## A nix column of - marks a component built on Debian only.
+  components = builtins.filter (c: c.attrPath != [ "-" ]) (map (line:
     let f = fields line; in {
       name = builtins.elemAt f 0;
       url = builtins.elemAt f 1;
@@ -24,7 +25,7 @@ let
       commit = builtins.elemAt f 3;
       build = builtins.elemAt f 4;
       attrPath = lib.splitString "." (builtins.elemAt f 5);
-    }) (readLines "${src}/upstream/components.conf");
+    }) (readLines "${src}/upstream/components.conf"));
 
   patchesFor = name:
     let series = "${src}/patches/${name}/series"; in

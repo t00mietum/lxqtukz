@@ -1,0 +1,2 @@
+##	Extra configure arguments for wayland-protocols, one per line.
+-Dtests=false

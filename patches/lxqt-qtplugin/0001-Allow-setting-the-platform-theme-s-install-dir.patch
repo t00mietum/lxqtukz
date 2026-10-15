@@ -1,0 +1,38 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: t00mietum <73576036+t00mietum@users.noreply.github.com>
+Date: Wed, 14 Oct 2026 20:22:38 -0700
+Subject: [PATCH] Allow setting the platform theme's install dir
+
+The plugin always went to Qt's own plugin dir, which is outside the
+install prefix when LXQt is installed somewhere other than Qt. Let
+QT_PLUGINS_DIR be given on the command line, and only ask Qt when it
+isn't.
+---
+ src/CMakeLists.txt | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 6bcd84e83409834144b400a0e8a46eda64313d29..a703dfdd0dafdde5c0ac307da1eae6dd07d7ef48 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -42,12 +42,15 @@ target_link_libraries(qtlxqt
+         Qt6XdgIconLoader
+ )
+ 
+-lxqt_query_qt(_QT_PLUGINS_DIR QT_INSTALL_PLUGINS)
+-
+-if (NOT _QT_PLUGINS_DIR)
+-    message(FATAL_ERROR "Qt6 plugin directory cannot be detected.")
++# Modified 2026 for LXQtukz: QT_PLUGINS_DIR can be given, for installs outside Qt's prefix.
++if (NOT QT_PLUGINS_DIR)
++    lxqt_query_qt(_QT_PLUGINS_DIR QT_INSTALL_PLUGINS)
++
++    if (NOT _QT_PLUGINS_DIR)
++        message(FATAL_ERROR "Qt6 plugin directory cannot be detected.")
++    endif()
++    set(QT_PLUGINS_DIR "${_QT_PLUGINS_DIR}")
+ endif()
+-set(QT_PLUGINS_DIR "${_QT_PLUGINS_DIR}")
+ message(STATUS "Qt6 plugin directory:" "${QT_PLUGINS_DIR}")
+ 
+ install(TARGETS qtlxqt LIBRARY DESTINATION "${QT_PLUGINS_DIR}/platformthemes")

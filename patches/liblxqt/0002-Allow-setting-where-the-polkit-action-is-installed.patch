@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: t00mietum <73576036+t00mietum@users.noreply.github.com>
+Date: Wed, 14 Oct 2026 21:40:46 -0700
+Subject: [PATCH] Allow setting where the polkit action is installed
+
+PolkitQt's CMake config always points at polkit's own actions dir, so
+an install to another prefix writes outside it. Take POLKIT_ACTIONS_DIR
+from the command line when given.
+---
+ CMakeLists.txt | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a3cfb69e3e9964c84a4dfa6714f6b8763f1769c4..1a9559cb860490fab02943896a3ebc440582e4cd 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -386,6 +386,10 @@ install(FILES ${LXQT_CONFIG_FILES}
+     COMPONENT Runtime
+ )
+ 
++# Modified 2026 for LXQtukz: POLKIT_ACTIONS_DIR can be given, for installs outside polkit's prefix.
++if (POLKIT_ACTIONS_DIR)
++    set(POLKITQT-1_POLICY_FILES_INSTALL_DIR "${POLKIT_ACTIONS_DIR}")
++endif()
+ if (BUILD_BACKLIGHT_LINUX_BACKEND)
+     install(FILES ${POLKIT_FILES} DESTINATION "${POLKITQT-1_POLICY_FILES_INSTALL_DIR}")
+ endif (BUILD_BACKLIGHT_LINUX_BACKEND)

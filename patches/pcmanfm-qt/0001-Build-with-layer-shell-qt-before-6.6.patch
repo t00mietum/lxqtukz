@@ -1,0 +1,66 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: t00mietum <73576036+t00mietum@users.noreply.github.com>
+Date: Wed, 14 Oct 2026 20:28:40 -0700
+Subject: [PATCH] Build with layer-shell-qt before 6.6
+
+1e47f66 raised the minimum to 6.6 for setWantsToBeOnActiveScreen() and
+setScreen(). Debian 13 has 6.3, where the same choice is made with
+setScreenConfiguration(). Use that when layer-shell-qt is older.
+---
+ CMakeLists.txt            |  6 +++++-
+ pcmanfm/desktopwindow.cpp | 11 +++++++++++
+ 2 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 49743368cd6b0b0499b9f5921cbe5dcb6df206f3..4bfb9ec4905fd7b85976a77ac101ce6ce5712306 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -17,7 +17,7 @@ set(PCMANFM_QT_VERSION ${PCMANFM_QT_VERSION_MAJOR}.${PCMANFM_QT_VERSION_MINOR}.$
+ set(LIBFMQT_MINIMUM_VERSION "2.4.0")
+ set(LXQTBT_MINIMUM_VERSION "2.4.0")
+ set(QT_MINIMUM_VERSION "6.6.0")
+-set(SHELLQT_MINIMUM_VERSION "6.6.0")
++set(SHELLQT_MINIMUM_VERSION "6.0.0")
+ 
+ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+ 
+@@ -27,6 +27,10 @@ find_package(Qt6Widgets ${QT_MINIMUM_VERSION} REQUIRED)
+ find_package(fm-qt6 ${LIBFMQT_MINIMUM_VERSION} REQUIRED)
+ find_package(lxqt2-build-tools ${LXQTBT_MINIMUM_VERSION} REQUIRED)
+ find_package(LayerShellQt ${SHELLQT_MINIMUM_VERSION} REQUIRED)
++# Modified 2026 for LXQtukz: builds with layer-shell-qt older than 6.6.
++if(LayerShellQt_VERSION VERSION_LESS "6.6.0")
++    add_compile_definitions(LAYERSHELLQT_BEFORE_6_6)
++endif()
+ 
+ message(STATUS "Building ${PROJECT_NAME} with Qt ${Qt6Core_VERSION}")
+ 
+diff --git a/pcmanfm/desktopwindow.cpp b/pcmanfm/desktopwindow.cpp
+index 4d9fd3610a967a4c0f22daf67efc9601b7a9096e..889622b770c58859012d88da9ff2e54c210b71d3 100644
+--- a/pcmanfm/desktopwindow.cpp
++++ b/pcmanfm/desktopwindow.cpp
+@@ -216,6 +216,16 @@ DesktopWindow::DesktopWindow(int screenNum, const QString& screenName):
+                 layershell->setScope(QStringLiteral("desktop")); // just for distinguishing it
+ 
+                 auto screen = getDesktopScreen();
++#ifdef LAYERSHELLQT_BEFORE_6_6
++                // Modified 2026 for LXQtukz: the same through the API layer-shell-qt had before 6.6.
++                if(screen != nullptr) {
++                    win->setScreen(screen);
++                    layershell->setScreenConfiguration(LayerShellQt::Window::ScreenFromQWindow);
++                }
++                else {
++                    layershell->setScreenConfiguration(LayerShellQt::Window::ScreenFromCompositor);
++                }
++#else
+                 if(screen != nullptr) {
+                     win->setScreen(screen);
+                     layershell->setWantsToBeOnActiveScreen(false);
+@@ -224,6 +234,7 @@ DesktopWindow::DesktopWindow(int screenNum, const QString& screenName):
+                 else {
+                     layershell->setWantsToBeOnActiveScreen(true);
+                 }
++#endif
+             }
+         }
+     }
