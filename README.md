@@ -147,6 +147,8 @@ cd lxqtukz
 cicd/upstream.bash status        # pins, patch counts, newer upstream releases
 cicd/upstream.bash apply liblxqt # upstream source plus our patches, in work/src/liblxqt
 cicd/build.bash                  # full Debian 13 build in a container
+cicd/build.bash wayfire          # rebuild one component into the last full build
+cicd/session.bash                # start the built session on a headless Wayfire, and check it
 cicd/settings.bash               # settings app: lints, tests, a run on a headless Wayfire, then a copy in ~/.local/bin
 ~~~
 

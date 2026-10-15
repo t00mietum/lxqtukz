@@ -86,6 +86,7 @@ It follows upstream releases for as long as the project lives. The patches may g
 - `cicd/`: `upstream.bash` for tracking and patch queues, `build.bash` for the Debian build, `linux/Dockerfile` for the build container, and shared helpers in `utility/`, including `stage-prefix.bash`.
 	- `settings.bash` checks the settings app and runs it on a headless Wayfire, in the test container from `linux/Dockerfile.test`. Last, on the host, it copies the release build to `~/.local/bin/lxqtukz-settings`. Only the latest is kept.
 	- `paste.bash` checks copy and paste between apps on a headless Wayfire, using the release build's Wayfire and QTerminal, in the same container.
+	- `session.bash` starts the release build's session on a headless Wayfire with its own session bus, in the same container. It checks that the wallpaper, D-Bus started services and the portal come from the prefix.
 
 - `nix/`: overlay, package and NixOS module. `flake.nix` is at the root.
 
@@ -93,7 +94,7 @@ It follows upstream releases for as long as the project lives. The patches may g
 
 - `version`: the LXQtukz version, on one line.
 
-- `work/`: local only, never committed. Upstream mirrors, patched trees and build dirs.
+- `work/`: local only, never committed. Upstream mirrors, patched trees and build dirs. Also the Debian prefix, in `work/prefix/<target>/<version>`, so `cicd/build.bash <component>` can rebuild one component into the last full build and stage it again.
 
 - `project/`: design and backlog.
 
@@ -133,6 +134,12 @@ LXQt 2.4 and Wayfire 0.11.0 are pinned. Build order is the order of lines in `co
 
 - Wayfire 0.11 needs wlroots 0.20, and Debian 13 doesn't have it. So Wayfire builds its own pinned wlroots and wf-config submodules in, statically, per `upstream/flags/wayfire`. To patch wlroots, it would have to become its own component first.
 
+- wlroots 0.20 also needs newer wayland, wayland-protocols, libdrm, xkbcommon and pixman than Debian 13 has. They're pinned as components too, built into the prefix just before Wayfire, with `-` in the `nix` column so NixOS keeps nixpkgs' own. Programs that link them directly load ours through the rpath, and each is backward compatible with what Debian's Qt, cairo and Mesa were built against. xkbcommon still reads the system's keymaps.
+
+- pcmanfm-qt 2.4.1 wants layer-shell-qt 6.6, and Debian 13 has 6.3. A patch uses 6.3's API for the same thing.
+
+- lxqt-qtplugin and libqtxdg put their Qt plugins in the prefix, under `lib/qt6/plugins`, rather than in Qt's own plugin dir. The session adds that dir to `QT_PLUGIN_PATH`.
+
 - `lxqt-wayland-session` is built for its Wayfire defaults (`lxqt-wayfire.ini`) and helper scripts. Its launcher is replaced by ours.
 
 - wf-shell, labwc and the other compositors aren't built. LXQt's panel is the shell.
@@ -171,7 +178,15 @@ Some components keep settings outside `LXQt::Settings` and aren't covered yet: p
 
 - It sets the same Qt and XDG environment as upstream's launcher, plus `LXQT_CONFIG_NAME`, `XDG_SESSION_DESKTOP=lxqtukz` and `XDG_CURRENT_DESKTOP=LXQt:wayfire:wlroots`.
 
+- It puts the prefix's D-Bus service files in the bus's runtime dir, `$XDG_RUNTIME_DIR/dbus-1/services`. A bus that systemd started before login only knows the service dirs it saw then, but it reads the runtime dir whenever a name it doesn't know is asked for. The `SystemdService=` line is dropped, since systemd can't see the units in the prefix, so the bus starts the program itself. For now that's only the LXQt portal.
+
+- It hands `XDG_DATA_DIRS`, `XDG_CURRENT_DESKTOP` and a few more to D-Bus and the systemd user manager. Debian's `xdg-desktop-portal` runs as a systemd user service, and finds `lxqt.portal` and `lxqt-portals.conf` in the prefix through them. lxqt-session hands over the rest of the session's environment once Wayfire is up, but only to D-Bus.
+
 - It sets up the user's `wayfire.ini` with upstream's keyboard layout guess, then runs `exec wayfire -c` on it. Wayfire's `[autostart]` starts `lxqt-session`.
+
+- Wayfire runs `[autostart]` lines through `sh`. So the wallpaper line in the release's `wayfire.ini` says `${LXQTUKZ_PREFIX}/share/lxqt/...`, and the user's copy keeps working after an update and a prune. `stage-prefix.bash` rewrites upstream's `/usr/share/lxqt/` paths that way, and fails if a `/usr` path is left for a file the prefix has.
+
+- The notification daemon and the polkit agent aren't D-Bus started. lxqt-session starts them from the autostart entries in `<prefix>/etc/xdg/autostart`, by name, with the prefix first in `PATH`.
 
 ## Install layout and versions
 
@@ -260,5 +275,9 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 - 2026-10-14: The settings app is Rust with a Qt Quick interface through cxx-qt, drawn by KDE's desktop style for Qt Quick. It keeps Rust and shcl, as in SilkTerm, and still follows the Qt theme like any other Qt app. Alternatives are in the settings design doc.
 
 - 2026-10-14: LXQt stays the base rather than COSMIC, for now. tukzedo plans its own settings app, file manager, terminal and desktop layer, and maybe a panel, which leaves the base supplying the compositor and session plumbing. Wayfire's plugins and lxqt-qtplugin's theming of other Qt apps suit the personalities better than cosmic-comp, which is built for COSMIC's own shell.
+
+- 2026-10-14: wayland, wayland-protocols, libdrm, xkbcommon and pixman were added to the Debian build for wlroots 0.20, over pinning an older Wayfire. The panel focus fix the paste workaround needs is only in Wayfire 0.11.
+
+- 2026-10-14: D-Bus services from the prefix go through the bus's runtime dir rather than a system-wide `session.d` config. It needs no root, and other users and other desktops don't see our services, unless another desktop shares the bus with a running LXQtukz session.
 
 - 2026-10-14: Wayfire's `focus_main_surface_instead_of_popup` workaround is on in the `wayfire.ini` that comes with each release. Without it, a Qt context menu's Paste pastes nothing that another app copied. It's a patch to upstream's file rather than our own copy, since LXQt upstream may want it too.

@@ -12,4 +12,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript \
 	qml6-module-qtquick-dialogs qml6-module-org-kde-desktop lxqt-qtplugin \
 	qterminal xwayland xclip wl-clipboard x11-apps \
+	swaybg psmisc xdg-desktop-portal \
 	&& rm -rf /var/lib/apt/lists/*
