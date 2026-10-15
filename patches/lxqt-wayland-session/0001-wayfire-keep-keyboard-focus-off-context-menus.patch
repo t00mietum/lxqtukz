@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: t00mietum <73576036+t00mietum@users.noreply.github.com>
+Date: Wed, 14 Oct 2026 20:07:20 -0700
+Subject: [PATCH] wayfire: keep keyboard focus off context menus
+
+Since Wayfire 0.9 an xdg-popup with a grab takes keyboard focus. Each
+focus change sends the client a new selection offer, and Qt's context
+menu "Paste" then reads the offer that was replaced a moment before. It
+pastes nothing whenever the text was copied in another app. Ctrl+V is
+not affected, which is what makes it look random.
+
+Wayfire 0.10 added an opt-in workaround that leaves keyboard focus on
+the main window. Turn it on for the LXQt session.
+
+See https://github.com/WayfireWM/wayfire/issues/2600
+---
+ configurations/lxqt-wayfire.ini | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/configurations/lxqt-wayfire.ini b/configurations/lxqt-wayfire.ini
+index 1d6aba0edcc9eb64123e1a3f59bb1fdacc7e915b..51b77f369ae79a28bf1fdbe70ad5eb405b40fbea 100644
+--- a/configurations/lxqt-wayfire.ini
++++ b/configurations/lxqt-wayfire.ini
+@@ -96,6 +96,11 @@ vheight = 3
+ # Prefer client-side decoration or server-side decoration
+ preferred_decoration_mode = server
+ 
++# Qt apps paste nothing from a context menu when the text was copied in another
++# app, if the menu takes keyboard focus. Wayfire 0.10 and later.
++[workarounds]
++focus_main_surface_instead_of_popup = true
++
+ # Mouse bindings ───────────────────────────────────────────────────────────────
+ 
+ # Drag windows by holding down Super and left mouse button.

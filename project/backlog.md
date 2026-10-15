@@ -21,6 +21,29 @@ This is a product backlog just for pre-v1.0.0 release. After that, bugs, feature
 
 Sorted per the notes in [Template](#template). A milestone is a Task, and its items point to it with Parent ID.
 
+- Paste randomly stops working in terminals. QTerminal and SilkTerm. (Critical.)
+	- ID: 2026101417551800
+	- Type: Bug
+	- Status: Waiting for answers
+	- Needs local test suite run?: Yes. A full `cicd/build.bash`, then `cicd/paste.bash`. The menu stage has to pass on the release's Wayfire 0.11.
+	- Priority|Severity: Critical
+	- Opened: 20261014-175518
+	- Opened by: t00mietum
+	- Test environment: Debian 13, the stock LXQt session on Wayfire 0.9.0 (wlroots 0.18), Qt 6.8.
+	- Reproduced: Yes, 20261014, both causes below, on Debian's Wayfire 0.9 headless in the test container. Same packages as this box.
+	- Actual cause:
+		- QTerminal: since Wayfire 0.9 a context menu takes keyboard focus, and Qt's menu Paste then pastes nothing that another app copied. Ctrl+Shift+V works. Wayfire issue 2600.
+		- SilkTerm: its window is Wayland, but it copies and pastes through the X11 clipboard. wlroots only lets X11 apps use the clipboard while an X11 window has focus. So a copy in SilkTerm never reaches other apps, and SilkTerm pastes nothing another app copied. This box has no X11 windows open at all.
+	- Progress log:
+		- 20261014: ruled out on this box: no clipboard manager or other clipboard watcher runs. KDE Connect runs but has no paired device, so its clipboard plugin isn't loaded. The session log has nothing about the clipboard.
+		- 20261014: to confirm on this box with no changes: copy in FeatherPad, then right-click Paste in QTerminal pastes nothing, while Ctrl+Shift+V works. Copy in SilkTerm, then `wl-paste` in QTerminal prints the older text. Nothing in the live config fixes the first on Wayfire 0.9. The option starts at 0.10.
+		- 20261014: question: the SilkTerm half can be fixed in SilkTerm, by using the Wayland clipboard when its window is on Wayland. That's the clean fix, but it's SilkTerm's. Or LXQtukz could lift wlroots' rule, with a wlroots patch or a clipboard bridge in the session. Either lets any X11 app read the clipboard at any time, as on X11. Which way?
+	- Actual fix [Bug]: QTerminal half: the Wayfire config each release comes with turns on `focus_main_surface_instead_of_popup`, as a patch to upstream's file. SilkTerm half: open.
+	- Branch: pastefix
+	- Commit: c230370
+	- Test case: `cicd/paste.bash` menu stage for the QTerminal half. It fails on Debian's Wayfire 0.9 (`--system`), and with the option off. Its xwayland stage is the SilkTerm half, and fails today.
+	- Swept: the Wayfire option covers context-menu paste in every Qt app, QTerminal included. Of the apps running on this box, only SilkTerm has an X11 clipboard connection.
+
 - Milestone 3 - All settings in one place
 	- ID: 2026101221490202
 	- Type: Task
@@ -58,14 +81,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261014: labels were unreadable under a dark theme. Fixed.
 		- 20261014: a "Test now" icon on screen off and the screensaver, and a test area for key repeat.
 		- 20261014: the tallest tab's last row was cut off when the window opened. Fixed.
-
-- Paste randomly stops working in terminals. QTerminal and SilkTerm. (Critical.)
-	- ID: 2026101417551800
-	- Type: Bug
-	- Status: Queued
-	- Priority|Severity: Critical
-	- Opened: 20261014-175518
-	- Opened by: t00mietum
 
 - Stop components from installing files outside the prefix. The build script lists them.
 	- ID: 2026101221490206

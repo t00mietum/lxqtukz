@@ -85,6 +85,7 @@ It follows upstream releases for as long as the project lives. The patches may g
 
 - `cicd/`: `upstream.bash` for tracking and patch queues, `build.bash` for the Debian build, `linux/Dockerfile` for the build container, and shared helpers in `utility/`, including `stage-prefix.bash`.
 	- `settings.bash` checks the settings app and runs it on a headless Wayfire, in the test container from `linux/Dockerfile.test`. Last, on the host, it copies the release build to `~/.local/bin/lxqtukz-settings`. Only the latest is kept.
+	- `paste.bash` checks copy and paste between apps on a headless Wayfire, using the release build's Wayfire and QTerminal, in the same container.
 
 - `nix/`: overlay, package and NixOS module. `flake.nix` is at the root.
 
@@ -259,3 +260,5 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 - 2026-10-14: The settings app is Rust with a Qt Quick interface through cxx-qt, drawn by KDE's desktop style for Qt Quick. It keeps Rust and shcl, as in SilkTerm, and still follows the Qt theme like any other Qt app. Alternatives are in the settings design doc.
 
 - 2026-10-14: LXQt stays the base rather than COSMIC, for now. tukzedo plans its own settings app, file manager, terminal and desktop layer, and maybe a panel, which leaves the base supplying the compositor and session plumbing. Wayfire's plugins and lxqt-qtplugin's theming of other Qt apps suit the personalities better than cosmic-comp, which is built for COSMIC's own shell.
+
+- 2026-10-14: Wayfire's `focus_main_surface_instead_of_popup` workaround is on in the `wayfire.ini` that comes with each release. Without it, a Qt context menu's Paste pastes nothing that another app copied. It's a patch to upstream's file rather than our own copy, since LXQt upstream may want it too.

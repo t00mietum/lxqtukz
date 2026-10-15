@@ -11,6 +11,7 @@
 #	    ctrl+Tab, ctrl+shift+Tab              a chord, modifiers held around it
 #	    text:500                              lower-case letters, digits, space
 #	    click:X,Y                             the left button, at X,Y on screen
+#	    rclick:X,Y                            the right button, at X,Y on screen
 #	  Each step is followed by a short pause, so the app has taken it before
 #	  the next one comes.
 #	- Syntax: wayfire-keys.py --geometry
@@ -82,11 +83,11 @@ def press(sock, names):
 		call(sock, "stipc/feed_key", {"key": name, "state": False})
 
 
-def click(sock, where):
+def click(sock, where, button="BTN_LEFT"):
 	x, y = (float(n) for n in where.split(","))
 	call(sock, "stipc/move_cursor", {"x": x, "y": y})
 	time.sleep(PAUSE)
-	call(sock, "stipc/feed_button", {"combo": "BTN_LEFT", "mode": "full"})
+	call(sock, "stipc/feed_button", {"combo": button, "mode": "full"})
 
 
 def main(steps):
@@ -102,6 +103,8 @@ def main(steps):
 	for step in steps:
 		if step.startswith("click:"):
 			click(sock, step[6:])
+		elif step.startswith("rclick:"):
+			click(sock, step[7:], "BTN_RIGHT")
 		elif step.startswith("text:"):
 			for char in step[5:]:
 				press(sock, [key_name("space" if char == " " else char)])
