@@ -338,16 +338,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
 
-- `cicd/build.bash <component>` fails when `work/` came from the repo's old location. The source trees are git worktrees that point at their mirror by absolute path.
-	- ID: 2026101509500812
-	- Type: Bug
-	- Status: Queued
-	- Priority|Severity: Low
-	- Opened: 20261015-095008
-	- Opened by: t00mietum
-	- Reproduced: Yes, 20261015. `cicd/build.bash lxqt-build-tools` stopped with "work tree has changes not in the queue", since git couldn't find the worktree under the old path.
-	- Note: `git worktree repair`, or relative worktree paths, would cover a moved repo.
-
 - With `AUTO_UPDATE=no`, installing deletes the updater timer's link in `/etc/systemd/system`, so turning auto update on later finds no timer.
 	- ID: 2026101509181633
 	- Type: Bug
@@ -394,6 +384,31 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Test case: put the floats back and the menu stage exits 1. With the fix, both arms run and it passes. `cicd/settings.bash check build gui keys` passes too.
 	- Swept: every `$((` in `cicd/` on outside values reads that one helper.
 	- Branch: menufloat
+
+- `cicd/build.bash <component>` fails when `work/` came from the repo's old location. The source trees are git worktrees that point at their mirror by absolute path.
+	- ID: 2026101509500812
+	- Type: Bug
+	- Status: Done
+	- Priority|Severity: Low
+	- Opened: 20261015-095008
+	- Opened by: t00mietum
+	- Reproduced: Yes, 20261015. `cicd/build.bash lxqt-build-tools` stopped with "work tree has changes not in the queue", since git couldn't find the worktree under the old path.
+	- Note: `git worktree repair`, or relative worktree paths, would cover a moved repo.
+	- Actual fix [Bug]: `cicd/upstream.bash` runs `git worktree repair` on any tree whose link points nowhere, before every subcommand.
+	- Test case: the old script still fails on this box's trees, and the new one repairs both and applies. liblxqt's tree was only behind its queue, so it was applied again with `--force`.
+	- Branch: treerepair
+
+- `cicd/upstream.bash status` stops at libxkbcommon, and shows libdrm's newest upstream as 2.4.70. It only knew bare tags like `1.2.3`, and these tag as `libdrm-2.4.129`.
+	- ID: 2026101513523151
+	- Type: Bug
+	- Status: Done
+	- Priority|Severity: Low
+	- Opened: 20261015-135231
+	- Opened by: t00mietum
+	- Reproduced: Yes, 20261015, on this box.
+	- Actual fix [Bug]: tags are matched with the pin's prefix, and a component with none shows "?". The columns are wider for the long tags.
+	- Test case: `cicd/upstream.bash status` runs through all components. libdrm shows libdrm-2.4.134, and xkbcommon shows xkbcommon-1.13.2.
+	- Branch: treerepair
 
 - Make D-Bus started services use the prefix instead of `/usr`. That covers notifications, the portal and the polkit agent.
 	- ID: 2026101221490207

@@ -55,11 +55,13 @@ git config user.email >/dev/null 2>&1 || export GIT_COMMITTER_NAME="LXQtukz" GIT
 fMirror(){ echo "${MIRROR_DIR}/$1.git"; }
 fTree(){   echo "${SRC_DIR}/$1"; }
 
-## Newest release-looking tag upstream. Pre-releases and odd tags (e.g.
-## pcmanfm-qt's 'split-libfm-qt') are left out on purpose.
+## Newest release-looking tag upstream, with the same prefix as the pin, such
+## as 'v' or 'libdrm-'. Pre-releases and odd tags (e.g. pcmanfm-qt's
+## 'split-libfm-qt') are left out on purpose. Empty when none match.
 fNewestUpstreamTag(){
+	local prefix="${componentRef[$1]%%[0-9]*}"
 	git ls-remote --tags --refs "${componentUrl[$1]}" 2>/dev/null \
-		| sed 's|.*refs/tags/||' | grep -E '^v?[0-9]+(\.[0-9]+)+$' | sort -V | tail -1
+		| sed 's|.*refs/tags/||' | grep -E "^${prefix//./\\.}[0-9]+(\.[0-9]+)+$" | sort -V | tail -1 || true
 }
 
 ## Same flags as refresh, so a tree and its queue compare byte for byte.
@@ -166,14 +168,14 @@ fRefresh(){
 fStatus(){
 	local name newest state count
 	local -i rc
-	printf "%-24s %-10s %-10s %-6s %s\n" "component" "pinned" "upstream" "queue" "work tree"
+	printf "%-24s %-18s %-18s %-6s %s\n" "component" "pinned" "upstream" "queue" "work tree"
 	for name in "$@"; do
 		newest="$(fNewestUpstreamTag "${name}")"
 		count="$(fComponents_Patches "${name}" | grep -c . || true)"
 		rc=0; fTreeMatchesQueue "${name}" || rc=$?
 		case ${rc} in 0) state="clean" ;; 1) state="CHANGED - refresh or --force apply" ;; *) state="-" ;; esac
 		[[ "${newest}" == "${componentRef[${name}]}" ]] || newest="${newest:-?} *"
-		printf "%-24s %-10s %-10s %-6s %s\n" "${name}" "${componentRef[${name}]}" "${newest}" "${count}" "${state}"
+		printf "%-24s %-18s %-18s %-6s %s\n" "${name}" "${componentRef[${name}]}" "${newest}" "${count}" "${state}"
 	done
 	fEcho_Clean ""
 	fEcho_Clean "* = newer upstream release than the pin; 'bump <component> <tag>' moves to it."
@@ -235,6 +237,22 @@ fBump(){
 	fBumpFinish "${name}" "${arg}" "${newCommit}"
 }
 
+## A moved repo leaves each work tree pointing at its mirror by the old
+## absolute path. git then can't see the tree, and the prune in apply would
+## drop it, so this runs before any subcommand.
+fTrees_Repair(){
+	local tree name gitdir
+	for tree in "${SRC_DIR}"/*/; do
+		tree="${tree%/}"; name="${tree##*/}"
+		[[ -f "${tree}/.git" ]] || continue
+		gitdir="$(sed -n 's/^gitdir: //p' "${tree}/.git")"
+		[[ ! -d "${gitdir}" ]] || continue
+		[[ -d "$(fMirror "${name}")" ]] || continue
+		fEcho "repair ${name}: the repo moved"
+		git -C "$(fMirror "${name}")" worktree repair "${tree}"
+	done
+}
+
 fHelp(){ sed -n '/^##\t- Purpose/,/^##\tHistory/p' "${BASH_SOURCE[0]}" | sed 's/^##\t\{0,1\}//'; }
 
 
@@ -253,6 +271,7 @@ set -- "${args[@]+"${args[@]}"}"
 (($#)) || { fHelp; exit 1; }
 subcommand="$1"; shift
 fComponents_Load
+fTrees_Repair
 
 case "${subcommand}" in
 	status)  fComponents_Select "$@"; fStatus  "${selectedComponents[@]}" ;;
@@ -268,3 +287,5 @@ esac
 
 ##	History:
 ##		- 2026-10-12: Created.
+##		- 2026-10-15: Work trees left behind by a moved repo are repaired.
+##		- 2026-10-15: status matches tags with the pin's prefix, and no longer stops on a component with none.
