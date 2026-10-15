@@ -14,6 +14,7 @@
 
 use crate::ini::Ini;
 use std::collections::HashMap;
+use std::fmt::Write as _;
 use std::fs;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -27,6 +28,7 @@ pub struct Xdg {
 	pub config_home: PathBuf,
 	pub config_dirs: Vec<PathBuf>,
 	pub data_dirs: Vec<PathBuf>,
+	pub state_home: PathBuf,
 }
 
 fn split(var: &str, fallback: &str) -> Vec<PathBuf> {
@@ -52,6 +54,9 @@ impl Xdg {
 				.map_or_else(|| home.join(".config"), PathBuf::from),
 			config_dirs: split("XDG_CONFIG_DIRS", "/etc/xdg"),
 			data_dirs: split("XDG_DATA_DIRS", "/usr/local/share:/usr/share"),
+			state_home: std::env::var_os("XDG_STATE_HOME")
+				.filter(|v| !v.is_empty())
+				.map_or_else(|| home.join(".local/state"), PathBuf::from),
 		}
 	}
 }
@@ -66,6 +71,17 @@ pub struct Wayfire {
 	system: Option<Ini>,
 	data_dirs: Vec<PathBuf>,
 	metadata: HashMap<String, HashMap<String, String>>,
+	/// Where a held value's note goes. See `hold`.
+	held_path: PathBuf,
+	held: Option<Held>,
+}
+
+/// A value written for a moment, and what it replaced.
+struct Held {
+	section: String,
+	option: String,
+	value: String,
+	before: Option<String>,
 }
 
 impl Wayfire {
@@ -75,7 +91,7 @@ impl Wayfire {
 			.clone()
 			.unwrap_or_else(|| xdg.config_home.join("lxqtukz/wayfire.ini"));
 		let read = |p: &Path| fs::read_to_string(p).ok().map(|t| Ini::parse(&t));
-		Wayfire {
+		let mut wayfire = Wayfire {
 			user: read(&path).unwrap_or_else(|| Ini::parse("")),
 			system: xdg
 				.config_dirs
@@ -84,6 +100,68 @@ impl Wayfire {
 			path,
 			data_dirs: xdg.data_dirs.clone(),
 			metadata: HashMap::new(),
+			held_path: xdg.state_home.join("lxqtukz/settings-held.shcl"),
+			held: None,
+		};
+		wayfire.recover();
+		wayfire
+	}
+
+	/// Writes a value for a moment, such as a one-second timeout for a test,
+	/// until `put_back`. A note of what it replaced is kept beside, so if the
+	/// app dies in between, its next start puts the value back.
+	pub fn hold(&mut self, section: &str, option: &str, value: &str) -> Result<(), SaveError> {
+		self.put_back()?;
+		let current = fs::read_to_string(&self.path).ok().map(|t| Ini::parse(&t));
+		let held = Held {
+			section: section.to_string(),
+			option: option.to_string(),
+			value: value.to_string(),
+			before: current.and_then(|ini| ini.get(section, option)),
+		};
+		let note = held
+			.note(&self.path)
+			.ok_or_else(|| SaveError(format!("{section}/{option} cannot be held")))?;
+		save(&self.held_path, &note)
+			.map_err(|e| SaveError(format!("{} could not be saved: {e}", self.held_path.display())))?;
+		self.held = Some(held);
+		self.write(&[(section.to_string(), option.to_string(), Some(value.to_string()))])
+	}
+
+	/// Ends a `hold`: the value it replaced goes back, unless something else
+	/// changed it meanwhile.
+	pub fn put_back(&mut self) -> Result<(), SaveError> {
+		let Some(held) = self.held.take() else {
+			return Ok(());
+		};
+		let current = fs::read_to_string(&self.path).ok().map(|t| Ini::parse(&t));
+		if current.and_then(|ini| ini.get(&held.section, &held.option)).as_deref() == Some(held.value.as_str()) {
+			self.write(&[(held.section, held.option, held.before)])?;
+		}
+		let _ = fs::remove_file(&self.held_path);
+		Ok(())
+	}
+
+	// A note left by a run that stopped during a hold, for this same file.
+	fn recover(&mut self) {
+		let Ok(text) = fs::read_to_string(&self.held_path) else {
+			return;
+		};
+		let doc = shcl::Document::parse(&text);
+		let get = |name: &str| doc.get_string(name).ok();
+		if get("file").as_deref() != self.path.to_str() {
+			return;
+		}
+		if let (Some(section), Some(option), Some(value)) = (get("section"), get("option"), get("value")) {
+			self.held = Some(Held {
+				section,
+				option,
+				value,
+				before: get("before"),
+			});
+			let _ = self.put_back();
+		} else {
+			let _ = fs::remove_file(&self.held_path);
 		}
 	}
 
@@ -158,6 +236,26 @@ impl Wayfire {
 			.map_err(|e| SaveError(format!("{} could not be saved: {e}", self.path.display())))?;
 		self.user = ini;
 		Ok(())
+	}
+}
+
+impl Held {
+	// None for a value that a plain quoted string cannot hold.
+	fn note(&self, file: &Path) -> Option<String> {
+		let quoted = |text: &str| (!text.contains(['"', '\\', '\n', '\r', '◉'])).then(|| format!("\"{text}\""));
+		let mut out = String::from(
+			"## A value lxqtukz-settings wrote for a moment, such as for a test.\n\
+			 ## If this file is here, the app stopped before it put the old value\n\
+			 ## back, and its next start does that.\n",
+		);
+		let _ = writeln!(out, "file: {}", quoted(file.to_str()?)?);
+		let _ = writeln!(out, "section: {}", quoted(&self.section)?);
+		let _ = writeln!(out, "option: {}", quoted(&self.option)?);
+		let _ = writeln!(out, "value: {}", quoted(&self.value)?);
+		if let Some(before) = &self.before {
+			let _ = writeln!(out, "before: {}", quoted(before)?);
+		}
+		Some(out)
 	}
 }
 
@@ -298,6 +396,7 @@ pub mod tests {
 				config_home: self.root.join("home"),
 				config_dirs: vec![self.root.join("etc")],
 				data_dirs: vec![self.root.join("data")],
+				state_home: self.root.join("state"),
 			}
 		}
 
@@ -423,6 +522,45 @@ pub mod tests {
 			"[input]\nkb_repeat_delay = 400\n",
 			"the lxqtukz file is left alone"
 		);
+	}
+
+	#[test]
+	fn a_held_value_goes_back_and_leaves_no_note() {
+		let s = Scratch::new("hold", Some("[idle]\nscreensaver_timeout = 300\n"), None);
+		let mut wf = Wayfire::open(&s.xdg());
+		wf.hold("idle", "screensaver_timeout", "1").unwrap();
+		assert_eq!(s.user_file(), "[idle]\nscreensaver_timeout = 1\n");
+		wf.put_back().unwrap();
+		assert_eq!(s.user_file(), "[idle]\nscreensaver_timeout = 300\n");
+		assert!(!s.root.join("state/lxqtukz/settings-held.shcl").exists());
+
+		// none before: the option is dropped again
+		wf.hold("idle", "dpms_timeout", "1").unwrap();
+		wf.put_back().unwrap();
+		assert_eq!(s.user_file(), "[idle]\nscreensaver_timeout = 300\n");
+	}
+
+	#[test]
+	fn a_run_that_stopped_during_a_hold_is_undone_at_the_next_start() {
+		let s = Scratch::new("crash", Some("[idle]\nscreensaver_timeout = 300\n"), None);
+		let mut wf = Wayfire::open(&s.xdg());
+		wf.hold("idle", "screensaver_timeout", "1").unwrap();
+		std::mem::forget(wf);
+		assert_eq!(s.user_file(), "[idle]\nscreensaver_timeout = 1\n");
+		let mut again = Wayfire::open(&s.xdg());
+		assert_eq!(s.user_file(), "[idle]\nscreensaver_timeout = 300\n");
+		assert_eq!(again.get("idle", "screensaver_timeout").as_deref(), Some("300"));
+		assert!(!s.root.join("state/lxqtukz/settings-held.shcl").exists());
+	}
+
+	#[test]
+	fn a_held_value_changed_meanwhile_is_left_alone() {
+		let s = Scratch::new("held-changed", Some("[idle]\nscreensaver_timeout = 300\n"), None);
+		let mut wf = Wayfire::open(&s.xdg());
+		wf.hold("idle", "screensaver_timeout", "1").unwrap();
+		fs::write(s.user_path(), "[idle]\nscreensaver_timeout = 900\n").unwrap();
+		wf.put_back().unwrap();
+		assert_eq!(s.user_file(), "[idle]\nscreensaver_timeout = 900\n");
 	}
 
 	#[test]

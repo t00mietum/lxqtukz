@@ -10,8 +10,12 @@
 #	    Tab, Up, Escape, Return, space ...   one key
 #	    ctrl+Tab, ctrl+shift+Tab              a chord, modifiers held around it
 #	    text:500                              lower-case letters, digits, space
+#	    click:X,Y                             the left button, at X,Y on screen
 #	  Each step is followed by a short pause, so the app has taken it before
 #	  the next one comes.
+#	- Syntax: wayfire-keys.py --geometry
+#	  Prints the focused window's x, y, width and height. Needs the ipc-rules
+#	  plugin too.
 
 #	Copyright © 2026 t00mietum (CryptogID: ปʬϝღถɔ4რఠΔթะ9ƾǝu)
 #	Licensed under The MIT License (MIT). Full text at:
@@ -59,6 +63,7 @@ def call(sock, method, data):
 	reply = json.loads(receive(sock, size))
 	if reply.get("result") != "ok":
 		sys.exit(f"wayfire-keys: {method} {data}: {reply}")
+	return reply
 
 
 def key_name(text):
@@ -77,14 +82,27 @@ def press(sock, names):
 		call(sock, "stipc/feed_key", {"key": name, "state": False})
 
 
+def click(sock, where):
+	x, y = (float(n) for n in where.split(","))
+	call(sock, "stipc/move_cursor", {"x": x, "y": y})
+	time.sleep(PAUSE)
+	call(sock, "stipc/feed_button", {"combo": "BTN_LEFT", "mode": "full"})
+
+
 def main(steps):
 	path = os.environ.get("WAYFIRE_SOCKET")
 	if not path:
 		sys.exit("wayfire-keys: WAYFIRE_SOCKET is not set")
 	sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 	sock.connect(path)
+	if steps == ["--geometry"]:
+		g = call(sock, "window-rules/get-focused-view", {})["info"]["geometry"]
+		print(g["x"], g["y"], g["width"], g["height"])
+		return
 	for step in steps:
-		if step.startswith("text:"):
+		if step.startswith("click:"):
+			click(sock, step[6:])
+		elif step.startswith("text:"):
 			for char in step[5:]:
 				press(sock, [key_name("space" if char == " " else char)])
 		else:

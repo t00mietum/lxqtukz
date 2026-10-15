@@ -14,6 +14,11 @@ cxx-qt = "0.10"
 cxx-qt-lib = { version = "0.10", features = ["qt_gui", "qt_qml", "qt_quickcontrols"] }
 # The bracketed arrays the declarations use are on shcl's dev branch, not yet
 # in a release. Move to the release that has them once it is out.
+# rustix is already there through wayland-backend; this adds poll.
+rustix = { version = "1", default-features = false, features = ["event", "std"] }
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 shcl = { git = "https://github.com/jim-collier/shcl", rev = "9effd271996a9c9958c373a8f34db214c6083f22" }
 
 [build-dependencies]

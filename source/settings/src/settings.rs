@@ -162,7 +162,7 @@ impl Settings {
 		match self.row(key).kind {
 			Kind::Toggle => parse_bool(text).map(Value::Bool),
 			Kind::Slider { .. } => parse_num(text).map(Value::Num),
-			Kind::Text | Kind::Dropdown { .. } | Kind::Heading => Some(Value::Text(text.to_string())),
+			Kind::Text | Kind::Dropdown { .. } | Kind::Heading | Kind::Tryout => Some(Value::Text(text.to_string())),
 		}
 	}
 
@@ -330,6 +330,17 @@ impl Settings {
 		self.aside.clear();
 		self.flush()
 	}
+
+	/// Writes a stored value for a moment, out of Cancel's reach, such as a
+	/// short timeout for "Test now". `put_back` ends it.
+	pub fn hold(&mut self, key: Key, stored: &str) -> Result<(), SaveError> {
+		let s = self.setting(key).clone();
+		self.wayfire.hold(&s.section, &s.option, stored)
+	}
+
+	pub fn put_back(&mut self) -> Result<(), SaveError> {
+		self.wayfire.put_back()
+	}
 }
 
 #[cfg(test)]
@@ -490,7 +501,7 @@ screensaver_timeout = -1
 						.clone(),
 				),
 				Kind::Text => Value::Text(format!("x{}", row.key.name().to_lowercase())),
-				Kind::Heading => unreachable!(),
+				Kind::Heading | Kind::Tryout => unreachable!(),
 			};
 			st.set(row.key, value.clone()).unwrap();
 			wanted.push((row.key, value));
