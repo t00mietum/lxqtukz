@@ -1,0 +1,7 @@
+##	Extra configure arguments for pixman, one per line.
+##	Debian 13 has 0.44; the pixman renderer in Wayfire's wlroots needs 0.46.
+-Dtests=disabled
+-Ddemos=disabled
+-Dgtk=disabled
+-Dlibpng=disabled
+-Dopenmp=disabled
