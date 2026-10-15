@@ -24,8 +24,8 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - Paste randomly stops working in terminals. QTerminal and SilkTerm. (Critical.)
 	- ID: 2026101417551800
 	- Type: Bug
-	- Status: Waiting for testing
-	- Needs local test suite run?: Yes. `cicd/paste.bash` menu stage on the release build, once its false pass (2026101422570842) is fixed. A scratch copy with that fixed passed on 20261014.
+	- Status: Done
+	- Needs local test suite run?: Done 20261015.
 	- Priority|Severity: Critical
 	- Opened: 20261014-175518
 	- Opened by: t00mietum
@@ -46,6 +46,9 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Commit: c230370
 	- Test case: `cicd/paste.bash` menu stage for the QTerminal half. It fails on Debian's Wayfire 0.9 (`--system`), and with the option off. Its xwayland stage is the SilkTerm half, and fails today.
 	- Swept: the Wayfire option covers context-menu paste in every Qt app, QTerminal included. Of the apps running on this box, only SilkTerm has an X11 clipboard connection.
+	- Verified: 20261015, `cicd/paste.bash menu` on the release build passes, and fails with the option off. The xwayland stage still fails, as expected, until SilkTerm and tukzclip have their fixes.
+	- Closed: 20261015-161500
+	- Acceptance signoff: Self-closed: the QTerminal half's test passes, and the SilkTerm half went to SilkTerm and tukzclip per the decision.
 
 - Milestone 3 - All settings in one place
 	- ID: 2026101221490202
@@ -227,6 +230,8 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- ID: 2026101418583700
 	- Type: Task
 	- Status: Queued
+	- Progress log:
+		- 20261015: done by hand once. LXQtukz reinstalled in `/opt/lxqtukz` from the 14:24 build, and `cicd/settings.bash dogfood` put the settings app in `~/.local/bin`. The pipeline step itself is still to do.
 	- Opened: 20261014-185837
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490203
