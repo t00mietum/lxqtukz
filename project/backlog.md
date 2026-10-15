@@ -128,6 +128,15 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Related IDs: 2026101221490206
 	- Note: polkit only reads `/usr/share/polkit-1/actions`, so the installer would link it there. Its action id is the same as Debian's liblxqt one, so it needs its own file name and id first. Unverified that the password prompt happens.
 
+- Drop pcmanfm-qt from the build. Find what still needs libfm-qt, and what shows desktop icons until tukzdesk.
+	- ID: 2026101509181628
+	- Type: Task
+	- Status: Queued
+	- Opened: 20261015-091816
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: it also drops the pcmanfm-qt patch for the older layer-shell-qt.
+
 - tukzclip: our own clipboard program. Keeps the clipboard after the app that copied closes, and bridges the Wayland and X11 clipboards.
 	- ID: 2026101509021629
 	- Type: Feature
@@ -223,14 +232,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - List every config path in every component. Search all pinned sources for `QSettings(`, `XdgDirs::configHome`, `"lxqt"` and `.config/`. Mark each as covered by the liblxqt patch or needing its own.
 	- ID: 2026101221490215
 	- Type: Task
-	- Status: Queued
-	- Opened: 20261012-214902
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490202
-
-- pcmanfm-qt and libfm-qt: move settings from `~/.config/pcmanfm-qt/<profile>/` under `LXQT_CONFIG_NAME`, by patch or by setting the profile.
-	- ID: 2026101221490216
-	- Type: Enhancement
 	- Status: Queued
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
@@ -376,6 +377,16 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Status: Queued
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
+
+- With `AUTO_UPDATE=no`, installing deletes the updater timer's link in `/etc/systemd/system`, so turning auto update on later finds no timer.
+	- ID: 2026101509181633
+	- Type: Bug
+	- Status: Queued
+	- Priority|Severity: Low
+	- Opened: 20261015-091816
+	- Opened by: t00mietum
+	- Reproduced: Yes, 20261015, installing 0.1.0-alpha1 on this box. The service's link is there, the timer's isn't.
+	- Possible cause: `systemctl disable` on a linked unit removes the link itself.
 
 - Release manifests say the commit is `unknown`. Inside the build container, git refuses the repo, since it belongs to another user.
 	- ID: 2026101421433386
@@ -536,6 +547,16 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Status: Deferred
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
+
+- pcmanfm-qt and libfm-qt: move settings from `~/.config/pcmanfm-qt/<profile>/` under `LXQT_CONFIG_NAME`, by patch or by setting the profile.
+	- ID: 2026101221490216
+	- Type: Enhancement
+	- Status: Moot
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490202
+	- Note: pcmanfm-qt won't be used (20261015). Dropping it is 2026101509181628.
+	- Closed: 20261015-091816
 
 **Stop here for a next release**
 
