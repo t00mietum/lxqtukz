@@ -43,6 +43,7 @@ KEYS = {
 	"ctrl": "KEY_LEFTCTRL",
 	"shift": "KEY_LEFTSHIFT",
 	"alt": "KEY_LEFTALT",
+	"super": "KEY_LEFTMETA",
 }
 PAUSE = 0.4
 

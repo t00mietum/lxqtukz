@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: t00mietum <73576036+t00mietum@users.noreply.github.com>
+Date: Thu, 15 Oct 2026 16:28:20 -0700
+Subject: [PATCH] wayfire: lock the screen when idle
+
+The session never locked on its own. Start swayidle and have it run
+lxqt-leave --lockscreen after an hour idle, which is when Wayfire's
+screensaver starts by default. lxqt-leave runs whatever locker LXQt's
+session settings name, so the idle lock and the lock key agree.
+
+lxqt-session already locks before sleep, so swayidle isn't given a
+before-sleep command, which would lock twice.
+---
+ configurations/lxqt-wayfire.ini | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/configurations/lxqt-wayfire.ini b/configurations/lxqt-wayfire.ini
+index 51b77f369ae79a28bf1fdbe70ad5eb405b40fbea..c252c984413bbad0afa5d5cd3b7607e653fb8893 100644
+--- a/configurations/lxqt-wayfire.ini
++++ b/configurations/lxqt-wayfire.ini
+@@ -148,7 +148,10 @@ session = lxqt-session && killall wayfire
+ # Idle configuration
+ # https://github.com/swaywm/swayidle
+ # https://github.com/swaywm/swaylock
+-# idle = swayidle before-sleep swaylock
++# Lock the screen after an hour idle, which is also when Wayfire's screensaver
++# starts by default. lxqt-leave runs the locker set in LXQt's session
++# settings. lxqt-session locks before sleep on its own.
++idle = swayidle timeout 3600 'lxqt-leave --lockscreen'
+ 
+ # XDG desktop portal
+ # Needed by some GTK applications

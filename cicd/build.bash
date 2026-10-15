@@ -212,12 +212,16 @@ deps="$(
 )"
 ## Run-time programs the session starts by name, and the QML modules the
 ## settings app loads, none of which ldd can see. killall is in wayfire.ini's
-## [autostart], and xdg-desktop-portal is what runs our portal.
+## [autostart], and xdg-desktop-portal is what runs our portal. lxqtukz-lock
+## runs gtklock and needs pgrep, swayidle is the idle lock in [autostart], and
+## gtklock's user name module gets the name from AccountsService. gtklock's
+## icons are SVG, which GTK can't draw without librsvg2-common.
 qml="qt6-wayland qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts
 	qml6-module-qtquick-window qml6-module-qtquick-templates qml6-module-qtqml-workerscript
 	qml6-module-org-kde-desktop"
-# shellcheck disable=2086  ## Word splitting is the point: both are lists.
-deps="$(printf '%s\n' ${deps} ${qml} dbus-x11 dbus-bin xwayland swaybg psmisc xdg-desktop-portal | sort -u)"
+locker="gtklock gtklock-userinfo-module accountsservice librsvg2-common swayidle procps"
+# shellcheck disable=2086  ## Word splitting is the point: these are lists.
+deps="$(printf '%s\n' ${deps} ${qml} ${locker} dbus-x11 dbus-bin xwayland swaybg psmisc xdg-desktop-portal | sort -u)"
 echo "${deps}" | sed 's/^/  /'
 
 fSection "Package"
