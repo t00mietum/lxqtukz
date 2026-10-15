@@ -40,7 +40,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261014: question: the SilkTerm half can be fixed in SilkTerm, by using the Wayland clipboard when its window is on Wayland. That's the clean fix, but it's SilkTerm's. Or LXQtukz could lift wlroots' rule, with a wlroots patch or a clipboard bridge in the session. Either lets any X11 app read the clipboard at any time, as on X11. Which way?
 	- Related IDs: 2026101422570842, 2026101509021629
 	- Decisions:
-		- 20261015: the SilkTerm half gets fixed in SilkTerm. LXQtukz also gets a clipboard bridge, from tukzclip, a separate project.
+		- 20261015: the SilkTerm half gets fixed in SilkTerm. LXQtukz also gets a clipboard bridge, from tukzclip, a separate project. Its item moved to that project's backlog.
 	- Actual fix [Bug]: QTerminal half: the Wayfire config each release comes with turns on `focus_main_surface_instead_of_popup`, as a patch to upstream's file. SilkTerm half: fixed in SilkTerm, and the bridge comes from tukzclip.
 	- Branch: pastefix
 	- Commit: c230370
@@ -136,29 +136,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
 	- Note: it also drops the pcmanfm-qt patch for the older layer-shell-qt.
-
-- tukzclip: our own clipboard program. Keeps the clipboard after the app that copied closes, and bridges the Wayland and X11 clipboards.
-	- ID: 2026101509021629
-	- Type: Feature
-	- Status: Queued
-	- Opened: 20261015-090216
-	- Opened by: t00mietum
-	- Related IDs: 2026101417551800
-	- Requirements:
-		- A separate project under the tukzedo umbrella.
-		- Named 'tukzclip'.
-		- A program that shows up as an icon in the system tray.
-		- By default, it does two things:
-			- Keeps the clipboard contents in memory for a predefined length of time (default 60m).
-			- Bridges Wayland and X11 clipboard.
-		- Additional optional features, off by default:
-			- Convert the contents to (UTF-8) text-only.
-			- Run a command-line with the clipboard contents as the argument.
-			- Keep a history a user-adjustable X slots long, and for at most Y minutes each.
-			- Persist history between runs. (With a warning about secrets being on storage.)
-	- Note: we need a clipboard bridge anyway, even if we weren't using Wayfire, because X11 has a "feature" (bug), where if you copy contents from say a text editor, then close that editor before pasting it somewhere, the clipboard contents disappear. This is "surprising", to say the least. Since a clipboard is "global" to a user's session and works between apps, you'd expect that closing the program doesn't clear it. I get that it might be due to "security concerns", but that is a total half-measure.
-	- Note: Wayland does the same. The clipboard belongs to the app that set it, and is gone when that app exits.
-	- Note: the project doesn't exist yet. Once it does, this item moves to its backlog.
 
 - Milestone 1 - First Debian build
 	- ID: 2026101221490200
