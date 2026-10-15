@@ -44,6 +44,66 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Test case: `cicd/paste.bash` menu stage for the QTerminal half. It fails on Debian's Wayfire 0.9 (`--system`), and with the option off. Its xwayland stage is the SilkTerm half, and fails today.
 	- Swept: the Wayfire option covers context-menu paste in every Qt app, QTerminal included. Of the apps running on this box, only SilkTerm has an X11 clipboard connection.
 
+- Stop components from installing files outside the prefix. The build script lists them.
+	- ID: 2026101221490206
+	- Type: Bug
+	- Status: Waiting on signoff
+	- Priority|Severity: Avg
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: likely lxqt-qtplugin's platform theme in Qt's plugin dir, xdg-desktop-portal-lxqt's D-Bus service and portal files, and polkit and systemd files.
+	- Reproduced: Yes, 20261014. The build's check listed libqtxdg's icon engine and lxqt-qtplugin's platform theme in Qt's plugin dir, and liblxqt's polkit action for the backlight helper.
+	- Actual cause: all 3 take their install dir from Qt or PolkitQt, not from the prefix. The portal, autostart and systemd files already went to the prefix.
+	- Actual fix: configure flags put all 3 under the prefix. lxqt-qtplugin and liblxqt each needed a small patch to accept one. The session already adds the prefix's plugin dir to `QT_PLUGIN_PATH`.
+	- Note: the polkit action does nothing from the prefix. Filed as its own item.
+	- Branch: prefixfix
+	- Commit: 95549c0, fdc2866
+	- Test case: the check in `cicd/build.bash` for files outside the prefix. With the new flags moved aside it lists all 3 files; the full build passes it.
+	- Swept: every install rule in the pinned components that doesn't use the prefix's own install dirs. The 3 above were the only ones outside the prefix.
+
+- Run `cicd/build.bash` all the way through in the Debian 13 container.
+	- ID: 2026101221490205
+	- Type: Task
+	- Status: Waiting on signoff
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: the Dockerfile package list and `upstream/flags/*` will likely need fixes.
+	- Progress log:
+		- 20261014: missing LXQt components added: qtxdg-tools for lxqt-session, libsysstat for the panel's system monitor.
+		- 20261014: the build image got the Debian packages the first full build asked for.
+		- 20261014: pcmanfm-qt 2.4.1 wants a newer layer-shell-qt than Debian 13 has. A patch uses the older API for the same thing.
+		- 20261014: Wayfire's bundled wlroots needs newer wayland, wayland-protocols, libdrm, xkbcommon and pixman than Debian 13 has. They're built into the prefix on Debian only.
+	- Decisions:
+		- 20261014: the newer libraries are built in, rather than pinning an older Wayfire, since the paste fix needs Wayfire 0.11. Recorded in design.md.
+	- Branch: prefixfix
+	- Commit: 95549c0, 91976e1, fdc2866
+	- Test case: `cicd/build.bash` itself. It stopped at lxqt-session before, and runs through to the release assets after.
+	- Verified: 20261014, `cicd/build.bash` from clean ran through twice: nothing outside the prefix, staged, and the archive, dependency list and sums written. The sums check out.
+
+- Make D-Bus started services use the prefix instead of `/usr`. That covers notifications, the portal and the polkit agent.
+	- ID: 2026101221490207
+	- Type: Bug
+	- Status: Waiting for testing
+	- Needs external testing: Yes. A real login on Debian 13, where systemd starts the bus. A file chooser from a portal-aware app, such as a Flatpak or Firefox with portals on, should be the LXQt one, and `busctl --user status org.freedesktop.impl.portal.desktop.lxqt` should show a path under `/opt/lxqtukz`.
+	- Priority|Severity: Avg
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: session D-Bus service files may need `XDG_DATA_DIRS` set when the bus starts, or a patch.
+	- Related IDs: 2026101221490209
+	- Reproduced: Partly, 20261014. In the test container, the bus couldn't start our portal without the fix. That a bus systemd starts before login never looks in the prefix, and that Debian's xdg-desktop-portal runs with the systemd user environment, is from reading only.
+	- Actual cause: only the portal is D-Bus started. Notifications and the polkit agent are started by lxqt-session from the prefix's autostart entries, by name, with the prefix first in `PATH`, so they already use the prefix.
+	- Actual fix: `startlxqtukz` copies the prefix's D-Bus service files into the bus's runtime dir, which the bus reads on demand, and drops the systemd hand-off from them. It also gives the session's `XDG_DATA_DIRS` and desktop name to D-Bus and systemd, so xdg-desktop-portal finds our portal and its config. The release's `wayfire.ini` hands over the display just before lxqt-session starts, since lxqt-session starts the portal before it hands over its own environment. `xdg-desktop-portal` joined the release's dependency list.
+	- Progress log:
+		- 20261014: the new session check found the launcher stopped when `LANG` was unset. Fixed.
+		- 20261014: the same check found lxqt-session starts the portal before the display is known. The LXQt portal died, and xdg-desktop-portal left the file chooser out for the whole session.
+	- Branch: prefixfix
+	- Commit: 83f953f, fdc2866
+	- Test case: `cicd/session.bash`, its D-Bus and portal checks.
+	- Verified: 20261014, `cicd/session.bash` passed its D-Bus and portal checks 3 times in a row, with and without a GPU. With the old launcher 3 of those checks fail, and with the old `session` line the portal check fails.
+
 - Milestone 3 - All settings in one place
 	- ID: 2026101221490202
 	- Type: Task
@@ -82,39 +142,38 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261014: a "Test now" icon on screen off and the screensaver, and a test area for key repeat.
 		- 20261014: the tallest tab's last row was cut off when the window opened. Fixed.
 
-- Stop components from installing files outside the prefix. The build script lists them.
-	- ID: 2026101221490206
+- The backlight helper's polkit action is in the prefix, where polkit never reads it. Brightness keys may ask for an admin password.
+	- ID: 2026101421433387
 	- Type: Bug
 	- Status: Queued
-	- Opened: 20261012-214902
+	- Priority|Severity: Avg
+	- Opened: 20261014-214333
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
-	- Note: likely lxqt-qtplugin's platform theme in Qt's plugin dir, xdg-desktop-portal-lxqt's D-Bus service and portal files, and polkit and systemd files.
+	- Related IDs: 2026101221490206
+	- Note: polkit only reads `/usr/share/polkit-1/actions`, so the installer would link it there. Its action id is the same as Debian's liblxqt one, so it needs its own file name and id first. Unverified that the password prompt happens.
 
-- Make D-Bus started services use the prefix instead of `/usr`. That covers notifications, the portal and the polkit agent.
-	- ID: 2026101221490207
+- Release manifests say the commit is `unknown`. Inside the build container, git refuses the repo, since it belongs to another user.
+	- ID: 2026101421433386
 	- Type: Bug
 	- Status: Queued
-	- Opened: 20261012-214902
+	- Priority|Severity: Low
+	- Opened: 20261014-214333
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
-	- Note: session D-Bus service files may need `XDG_DATA_DIRS` set when the bus starts, or a patch.
+	- Reproduced: Yes, 20261014. `git rev-parse HEAD` as root in the build image, on the mounted repo, exits 128 with "dubious ownership".
+	- Possible cause: `cicd/build.bash` asks git for the commit inside the container. The host side could pass it in.
 
-- Point the wallpaper in Wayfire's `[autostart]` at the prefix. Upstream's `lxqt-wayfire.ini` runs `swaybg -i /usr/share/lxqt/wallpapers/...`.
-	- ID: 2026101221490208
+- Wayfire logs that it can't load its fisheye plugin. Upstream's `lxqt-wayfire.ini` turns it on, but fisheye is in wayfire-plugins-extra, which isn't built.
+	- ID: 2026101421433388
 	- Type: Bug
 	- Status: Queued
-	- Opened: 20261012-214902
+	- Priority|Severity: Low
+	- Opened: 20261014-214333
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
-	- Note: either a stage step or an lxqt-wayland-session patch.
-
-- `cicd/build.bash <component>` can't stage. The container's prefix starts empty on every run, so a partial build has nothing to finish.
-	- ID: 2026101415260903
-	- Type: Bug
-	- Status: Queued
-	- Opened: 20261014-152609
-	- Opened by: t00mietum
+	- Reproduced: Yes, 20261014, in the session check's Wayfire log. The `[fisheye]` binding does nothing.
+	- Possible fix: build wayfire-plugins-extra as a component, or drop fisheye from the release's plugin list.
 
 - Milestone 1 - First Debian build
 	- ID: 2026101221490200
@@ -136,15 +195,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Status: Queued
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
-
-- Run `cicd/build.bash` all the way through in the Debian 13 container.
-	- ID: 2026101221490205
-	- Type: Task
-	- Status: Queued
-	- Opened: 20261012-214902
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490200
-	- Note: the Dockerfile package list and `upstream/flags/*` will likely need fixes.
 
 - First login on a real Debian 13 machine and in a VM. Check panel, runner, notifications, power, config center, file manager and terminal.
 	- ID: 2026101221490209
@@ -350,6 +400,43 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Status: Queued
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
+
+- `cicd/build.bash <component>` can't stage. The container's prefix starts empty on every run, so a partial build has nothing to finish.
+	- ID: 2026101415260903
+	- Type: Bug
+	- Status: Done
+	- Priority|Severity: Avg
+	- Opened: 20261014-152609
+	- Opened by: t00mietum
+	- Reproduced: Yes, 20261014. `cicd/build.bash lxqt-build-tools` stopped at staging, with no `lxqt-wayfire.ini` in the prefix.
+	- Actual cause: the container's `/opt` is new on every run, so a partial build's prefix had only the components it just built.
+	- Actual fix: the prefix is kept in `work/prefix/` and mounted into the container. A partial build over a prefix that no full build has finished says so, and skips staging.
+	- Branch: prefixfix
+	- Commit: 40210be
+	- Test case: `cicd/build.bash lxqt-build-tools` after a full build. Failed before the fix, stages after.
+	- Verified: 20261014, after a full build `cicd/build.bash lxqt-build-tools` staged and exited 0.
+	- Acceptance signoff: Self-closed: intent clear, test passes.
+	- Closed: 20261014-225457
+
+- Point the wallpaper in Wayfire's `[autostart]` at the prefix. Upstream's `lxqt-wayfire.ini` runs `swaybg -i /usr/share/lxqt/wallpapers/...`.
+	- ID: 2026101221490208
+	- Type: Bug
+	- Status: Done
+	- Priority|Severity: Low
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: either a stage step or an lxqt-wayland-session patch.
+	- Related IDs: 2026101221490231
+	- Reproduced: Yes, 20261014. The release's `wayfire.ini` ran `swaybg -i /usr/share/lxqt/wallpapers/origami-dark.png`, a file only a distro LXQt has.
+	- Actual fix: a stage step rewrites upstream's `/usr/share/lxqt/` to `${LXQTUKZ_PREFIX}/share/lxqt/`, which the shell Wayfire runs expands. Staging fails if a `/usr` path is left for a file the prefix has, or a prefix path points at nothing.
+	- Branch: prefixfix
+	- Commit: 95549c0, fdc2866
+	- Test case: `cicd/session.bash`, its wallpaper check. Also the stage step's own check, which fails with the rewrite taken out.
+	- Swept: every active `/usr` path in the release `wayfire.ini`. The wallpaper was the only one the prefix has. The commented-out portal line is Debian's own. `killall` in the same section needed `psmisc` in the dependency list.
+	- Verified: 20261014, `cicd/session.bash` wallpaper check: swaybg runs with the image in the prefix.
+	- Acceptance signoff: Self-closed: intent clear, test passes.
+	- Closed: 20261014-225457
 
 - Branch protection.
 	- ID: 2026101222253900
