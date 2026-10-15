@@ -89,10 +89,13 @@ if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
 fi
 
 ## A bus systemd started before login only looks for services in the dirs it
-## read then, never the prefix. Its runtime dir is read when a name is asked
-## for, so ours go there. SystemdService goes, since systemd can't see the
-## units in the prefix; the bus starts the program itself, with the environment
-## lxqt-session hands it. Marked, so the next login clears what we left.
+## read then, never the prefix. Ours go in its runtime dir, which wins over
+## the others, and the bus is told to reload: it only looks again on its own
+## for a name it can't find, and a distro's copy of the same service, such as
+## Debian's LXQt portal, already has the name. SystemdService goes, since
+## systemd can't see the units in the prefix; the bus starts the program
+## itself, with the environment lxqt-session hands it. Marked, so the next
+## login clears what we left.
 if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
 	busDir="${XDG_RUNTIME_DIR}/dbus-1/services"
 	mkdir -p "${busDir}"
@@ -104,6 +107,8 @@ if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
 		[[ -e "${svc}" ]] || continue
 		{ echo "# lxqtukz"; sed '/^SystemdService=/d' "${svc}"; } > "${busDir}/${svc##*/}"
 	done
+	dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ReloadConfig >/dev/null \
+		|| fLog "the session bus did not reload; D-Bus may start a distro copy of our services"
 fi
 ## Debian's xdg-desktop-portal is a systemd user service. It finds lxqt.portal
 ## and lxqt-portals.conf through XDG_DATA_DIRS, and picks by XDG_CURRENT_DESKTOP.
