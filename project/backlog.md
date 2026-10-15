@@ -103,12 +103,17 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - `cicd/paste.bash menu` passes without running either arm on Wayfire 0.11. Its IPC gives window geometry as floats, and the stage's arithmetic stops on them with exit 0.
 	- ID: 2026101422570842
 	- Type: Bug
-	- Status: Queued
+	- Status: Done
 	- Priority|Severity: High
 	- Opened: 20261014-225708
 	- Opened by: t00mietum
 	- Related IDs: 2026101417551800
 	- Note: with the floats truncated, both arms ran against the release build: pasted nothing with the workaround off, and pasted with the release settings.
+	- Actual cause [Bug]: bash arithmetic on "100.0" drops the whole stage loop, then runs on to "done" and exit 0.
+	- Actual fix [Bug]: the geometry helper prints whole numbers. In paste.bash and settings.bash the stage loop and "done" are one command, so a dropped stage exits 1.
+	- Test case: put the floats back and the menu stage exits 1. With the fix, both arms run and it passes. `cicd/settings.bash check build gui keys` passes too.
+	- Swept: every `$((` in `cicd/` on outside values reads that one helper.
+	- Branch: menufloat
 
 - The backlight helper's polkit action is in the prefix, where polkit never reads it. Brightness keys may ask for an admin password.
 	- ID: 2026101421433387

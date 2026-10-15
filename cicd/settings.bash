@@ -445,8 +445,9 @@ fStage_keys(){
 	fEcho "the screen-off test turns it off, and a key turns it back on"
 }
 
-for stage in "${stages[@]}"; do "fStage_${stage}"; done
-fEcho "done: ${stages[*]}"
+## One command, so a bash arithmetic error that drops a stage drops "done"
+## too, and the script exits non-zero. Apart, bash runs on to "done" and 0.
+{ for stage in "${stages[@]}"; do "fStage_${stage}"; done; fEcho "done: ${stages[*]}"; }
 
 
 ##	History:
@@ -456,3 +457,4 @@ fEcho "done: ${stages[*]}"
 ##		- 2026-10-14: A screenshot under a dark LXQt palette.
 ##		- 2026-10-14: Test now cases, and the key repeat test area.
 ##		- 2026-10-14: The window comes up at its natural size.
+##		- 2026-10-15: A stage dropped by a bash error no longer ends in "done" and exit 0.

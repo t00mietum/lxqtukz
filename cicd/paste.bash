@@ -259,9 +259,11 @@ fStage_xwayland(){
 	((! qt)) || fDie "X11 clients lose the clipboard while a Wayland window has focus"
 }
 
-for stage in "${stages[@]}"; do "fStage_${stage}"; done
-fEcho "done: ${stages[*]}"
+## One command, so a bash arithmetic error that drops a stage drops "done"
+## too, and the script exits non-zero. Apart, bash runs on to "done" and 0.
+{ for stage in "${stages[@]}"; do "fStage_${stage}"; done; fEcho "done: ${stages[*]}"; }
 
 
 ##	History:
 ##		- 2026-10-14: Created.
+##		- 2026-10-15: A stage dropped by a bash error no longer ends in "done" and exit 0.
