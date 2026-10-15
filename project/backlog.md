@@ -142,6 +142,16 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261014: a "Test now" icon on screen off and the screensaver, and a test area for key repeat.
 		- 20261014: the tallest tab's last row was cut off when the window opened. Fixed.
 
+- `cicd/paste.bash menu` passes without running either arm on Wayfire 0.11. Its IPC gives window geometry as floats, and the stage's arithmetic stops on them with exit 0.
+	- ID: 2026101422570842
+	- Type: Bug
+	- Status: Queued
+	- Priority|Severity: High
+	- Opened: 20261014-225708
+	- Opened by: t00mietum
+	- Related IDs: 2026101417551800
+	- Note: with the floats truncated, both arms ran against the release build: pasted nothing with the workaround off, and pasted with the release settings.
+
 - The backlight helper's polkit action is in the prefix, where polkit never reads it. Brightness keys may ask for an admin password.
 	- ID: 2026101421433387
 	- Type: Bug
@@ -152,28 +162,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Parent ID: 2026101221490200
 	- Related IDs: 2026101221490206
 	- Note: polkit only reads `/usr/share/polkit-1/actions`, so the installer would link it there. Its action id is the same as Debian's liblxqt one, so it needs its own file name and id first. Unverified that the password prompt happens.
-
-- Release manifests say the commit is `unknown`. Inside the build container, git refuses the repo, since it belongs to another user.
-	- ID: 2026101421433386
-	- Type: Bug
-	- Status: Queued
-	- Priority|Severity: Low
-	- Opened: 20261014-214333
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490200
-	- Reproduced: Yes, 20261014. `git rev-parse HEAD` as root in the build image, on the mounted repo, exits 128 with "dubious ownership".
-	- Possible cause: `cicd/build.bash` asks git for the commit inside the container. The host side could pass it in.
-
-- Wayfire logs that it can't load its fisheye plugin. Upstream's `lxqt-wayfire.ini` turns it on, but fisheye is in wayfire-plugins-extra, which isn't built.
-	- ID: 2026101421433388
-	- Type: Bug
-	- Status: Queued
-	- Priority|Severity: Low
-	- Opened: 20261014-214333
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490200
-	- Reproduced: Yes, 20261014, in the session check's Wayfire log. The `[fisheye]` binding does nothing.
-	- Possible fix: build wayfire-plugins-extra as a component, or drop fisheye from the release's plugin list.
 
 - Milestone 1 - First Debian build
 	- ID: 2026101221490200
@@ -401,6 +389,28 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
 
+- Release manifests say the commit is `unknown`. Inside the build container, git refuses the repo, since it belongs to another user.
+	- ID: 2026101421433386
+	- Type: Bug
+	- Status: Queued
+	- Priority|Severity: Low
+	- Opened: 20261014-214333
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Reproduced: Yes, 20261014. `git rev-parse HEAD` as root in the build image, on the mounted repo, exits 128 with "dubious ownership".
+	- Possible cause: `cicd/build.bash` asks git for the commit inside the container. The host side could pass it in.
+
+- Wayfire logs that it can't load its fisheye plugin. Upstream's `lxqt-wayfire.ini` turns it on, but fisheye is in wayfire-plugins-extra, which isn't built.
+	- ID: 2026101421433388
+	- Type: Bug
+	- Status: Queued
+	- Priority|Severity: Low
+	- Opened: 20261014-214333
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Reproduced: Yes, 20261014, in the session check's Wayfire log. The `[fisheye]` binding does nothing.
+	- Possible fix: build wayfire-plugins-extra as a component, or drop fisheye from the release's plugin list.
+
 - `cicd/build.bash <component>` can't stage. The container's prefix starts empty on every run, so a partial build has nothing to finish.
 	- ID: 2026101415260903
 	- Type: Bug
@@ -415,26 +425,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Commit: 40210be
 	- Test case: `cicd/build.bash lxqt-build-tools` after a full build. Failed before the fix, stages after.
 	- Verified: 20261014, after a full build `cicd/build.bash lxqt-build-tools` staged and exited 0.
-	- Acceptance signoff: Self-closed: intent clear, test passes.
-	- Closed: 20261014-225457
-
-- Point the wallpaper in Wayfire's `[autostart]` at the prefix. Upstream's `lxqt-wayfire.ini` runs `swaybg -i /usr/share/lxqt/wallpapers/...`.
-	- ID: 2026101221490208
-	- Type: Bug
-	- Status: Done
-	- Priority|Severity: Low
-	- Opened: 20261012-214902
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490200
-	- Note: either a stage step or an lxqt-wayland-session patch.
-	- Related IDs: 2026101221490231
-	- Reproduced: Yes, 20261014. The release's `wayfire.ini` ran `swaybg -i /usr/share/lxqt/wallpapers/origami-dark.png`, a file only a distro LXQt has.
-	- Actual fix: a stage step rewrites upstream's `/usr/share/lxqt/` to `${LXQTUKZ_PREFIX}/share/lxqt/`, which the shell Wayfire runs expands. Staging fails if a `/usr` path is left for a file the prefix has, or a prefix path points at nothing.
-	- Branch: prefixfix
-	- Commit: 95549c0, fdc2866
-	- Test case: `cicd/session.bash`, its wallpaper check. Also the stage step's own check, which fails with the rewrite taken out.
-	- Swept: every active `/usr` path in the release `wayfire.ini`. The wallpaper was the only one the prefix has. The commented-out portal line is Debian's own. `killall` in the same section needed `psmisc` in the dependency list.
-	- Verified: 20261014, `cicd/session.bash` wallpaper check: swaybg runs with the image in the prefix.
 	- Acceptance signoff: Self-closed: intent clear, test passes.
 	- Closed: 20261014-225457
 
@@ -475,6 +465,26 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Opened by: t00mietum
 	- Verified: apply, refresh and bump, on liblxqt.
 	- Closed: 20261012-214902
+
+- Point the wallpaper in Wayfire's `[autostart]` at the prefix. Upstream's `lxqt-wayfire.ini` runs `swaybg -i /usr/share/lxqt/wallpapers/...`.
+	- ID: 2026101221490208
+	- Type: Bug
+	- Status: Done
+	- Priority|Severity: Low
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: either a stage step or an lxqt-wayland-session patch.
+	- Related IDs: 2026101221490231
+	- Reproduced: Yes, 20261014. The release's `wayfire.ini` ran `swaybg -i /usr/share/lxqt/wallpapers/origami-dark.png`, a file only a distro LXQt has.
+	- Actual fix: a stage step rewrites upstream's `/usr/share/lxqt/` to `${LXQTUKZ_PREFIX}/share/lxqt/`, which the shell Wayfire runs expands. Staging fails if a `/usr` path is left for a file the prefix has, or a prefix path points at nothing.
+	- Branch: prefixfix
+	- Commit: 95549c0, fdc2866
+	- Test case: `cicd/session.bash`, its wallpaper check. Also the stage step's own check, which fails with the rewrite taken out.
+	- Swept: every active `/usr` path in the release `wayfire.ini`. The wallpaper was the only one the prefix has. The commented-out portal line is Debian's own. `killall` in the same section needed `psmisc` in the dependency list.
+	- Verified: 20261014, `cicd/session.bash` wallpaper check: swaybg runs with the image in the prefix.
+	- Acceptance signoff: Self-closed: intent clear, test passes.
+	- Closed: 20261014-225457
 
 - Ubuntu LTS and Debian 14 targets.
 	- ID: 2026101221490236
