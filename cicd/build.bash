@@ -17,7 +17,8 @@
 ##	    lxqtukz-<version>-<target>-deps.txt    Debian packages it needs at run time
 ##	    lxqtukz-<version>-sha256sums.txt
 ##	- Syntax: cicd/build.bash [--here] [--jobs N] [component...]
-##	    component...  build only these (into an existing prefix); default all, from clean.
+##	    component...  build only these (into the prefix of the last full build, kept
+##	                  in work/prefix/); default all, from clean.
 ##	                  'settings' is our settings app, source/settings/.
 ##	History: At bottom of script.
 
@@ -81,8 +82,12 @@ if ((! here)); then
 		"${REPO_ROOT}/cicd/upstream.bash" apply "${upstreamOnly[@]+"${upstreamOnly[@]}"}"
 	fi
 	fSection "Build in container"
+	## The prefix lives in the tree, so a partial build has the rest of it to
+	## install over and stage.
+	mkdir -p "${REPO_ROOT}/work/prefix/${TARGET}"
 	exec docker run --rm -i \
 		-v "${REPO_ROOT}:/src" -w /src \
+		-v "${REPO_ROOT}/work/prefix/${TARGET}:$(dirname "${PREFIX}")" \
 		-e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
 		"${IMAGE}" /src/cicd/build.bash --here --jobs "${jobs}" "${only[@]+"${only[@]}"}"
 fi
@@ -97,7 +102,7 @@ fi
 fGiveBack(){
 	[[ -n "${HOST_UID:-}" ]] || return 0
 	local dir
-	for dir in "${ARTIFACTS}" "${REPO_ROOT}/work/build" "${REPO_ROOT}/work/cargo"; do
+	for dir in "${ARTIFACTS}" "${REPO_ROOT}/work/build" "${REPO_ROOT}/work/cargo" "${REPO_ROOT}/work/prefix"; do
 		[[ ! -e "${dir}" ]] || chown -R "${HOST_UID}:${HOST_GID}" "${dir}"
 	done
 }
@@ -112,6 +117,9 @@ fi
 
 ## A full build starts from an empty prefix, so nothing stale ends up in a release.
 if ((${#only[@]} == 0)); then rm -rf "${PREFIX}"; fi
+## A partial build over a prefix no full build has finished has nothing to stage.
+declare -i stageable=1
+[[ ${#only[@]} -eq 0 || -f "${PREFIX}/share/lxqtukz/manifest" ]] || stageable=0
 mkdir -p "${PREFIX}" "${BUILD_DIR}"
 stamp="$(mktemp)"
 
@@ -181,6 +189,11 @@ if [[ -n "${strays}" ]]; then
 fi
 fEcho "none"
 
+if ((! stageable)); then
+	fEcho "no full build in ${PREFIX} yet; not staged"
+	exit 0
+fi
+
 commit="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
 [[ -z "$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null)" ]] || commit="${commit}-dirty"
 "${REPO_ROOT}/cicd/utility/stage-prefix.bash" "${PREFIX}" "/opt/lxqtukz/current" "${VERSION}" "${commit}" "${TARGET}"
@@ -219,3 +232,4 @@ ls -l "${ARTIFACTS}" | sed 's/^/  /'
 ##	History:
 ##		- 2026-10-12: Created.
 ##		- 2026-10-14: Builds the settings app.
+##		- 2026-10-14: Prefix kept in work/prefix/, so a partial build can stage.
