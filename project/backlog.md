@@ -99,6 +99,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261015: swaylock is running and holds both screens. Only one password try reached PAM, at 12:46, and it was rejected as a wrong password. The ZFS home unlock step after it never ran.
 		- 20261015: sending swaylock SIGUSR1 unlocks the screen, per its man page. Not tried yet.
 		- 20261015: the LXQtukz lock screen in the Settings item isn't done yet. It needs a password box, the user name, and a message on a failed try.
+		- 20261015: the password worked when typed more carefully. So unlocking works, and the bug is the missing feedback.
 
 - The backlight helper's polkit action is in the prefix, where polkit never reads it. Brightness keys may ask for an admin password.
 	- ID: 2026101421433387
