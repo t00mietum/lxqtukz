@@ -20,6 +20,9 @@ This is a product backlog just for pre-v1.0.0 release. After that, bugs, feature
 	- [Milestone 4 - CI/CD and first release](#milestone-4---cicd-and-first-release)
 	- [Milestone 5 - tukzedo-linux](#milestone-5---tukzedo-linux)
 - [Backlog](#backlog)
+	- [Pre-next-cut](#pre-next-cut)
+		- [Bugs](#bugs)
+		- [Enhancements](#enhancements)
 	- [Misc to-do](#misc-to-do)
 	- [Patches to send upstream](#patches-to-send-upstream)
 	- [Done](#done)
@@ -85,6 +88,7 @@ In each section, items are listed approximately from newest to oldest. A patch i
 	- Progress 20261014: a first cut of all 3, through Wayfire's own settings. Screen off and Wayfire's cube screensaver with their timeouts, key repeat, layouts and Num Lock, and the mouse and touchpad. Still to do: a lock screen, power actions and keyboard shortcuts.
 	- Progress 20261014: labels were unreadable under a dark theme. Fixed.
 	- Progress 20261014: a "Test now" icon on screen off and the screensaver, and a test area for key repeat.
+	- Progress 20261014: the tallest tab's last row was cut off when the window opened. Fixed.
 
 - 🔘 List every config path in every component. Search all pinned sources for `QSettings(`, `XdgDirs::configHome`, `"lxqt"` and `.config/`. Mark each as covered by the liblxqt patch or needing its own.
 
@@ -117,6 +121,17 @@ In each section, items are listed approximately from newest to oldest. A patch i
 - 🔘 tukzedo NixOS edition: module turned on with its settings.
 
 ## Backlog
+
+### Pre-next-cut
+
+#### Bugs
+
+- 🔘 Paste randomly stops working in terminals. QTerminal and SilkTerm. (Critical.)
+
+#### Enhancements
+
+- 🔘 Settings app: sub-tabs shown once their parent is selected, a search bar, and the planned Appearance, Interface and Hardware tabs.
+	- Note: the full list is in the design doc, `design_docs/20260930-145721_settings-dialog.md`, under Specification and Roadmap.
 
 ### Misc to-do
 
