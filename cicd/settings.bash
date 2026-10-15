@@ -289,17 +289,17 @@ fKeys(){
 	done
 }
 
-## The app window's x, y and width on screen.
-winX=0 winY=0 winW=0
+## The app window's x, y, width and height on screen.
+winX=0 winY=0 winW=0 winH=0
 fWindow(){
-	read -r winX winY winW _ < <(python3 -I "${REPO_ROOT}/cicd/utility/wayfire-keys.py" --geometry)
+	read -r winX winY winW winH < <(python3 -I "${REPO_ROOT}/cicd/utility/wayfire-keys.py" --geometry)
 }
 
 ## Clicks a row's "Test now" icon: two columns in from the window's right
 ## edge, at the row's height on its tab.
 fTestNow(){ ## row-y
 	fWindow
-	fKeys "click:$((winX + winW - 73)),$((winY + $1))"
+	fKeys "click:$((winX + winW - 65)),$((winY + $1))"
 }
 
 ## The color of one screen pixel, as "r g b".
@@ -404,6 +404,14 @@ fStage_keys(){
 	fEcho "Right steps a dropdown, and Cancel drops an option that was not there"
 	fApp_LogClean "keyboard cases"
 
+	## The window's natural height, title bar included, set by the tallest tab.
+	## A window that came up short cut that tab's last row off.
+	fApp_Start "Mouse and touchpad/Touchpad"
+	fWindow
+	fApp_Stop
+	((winH == 504)) || fDie "the window is ${winH} tall, not 504, so the tallest tab may be cut off (a layout change moves this)"
+	fEcho "the window comes up at its natural size"
+
 	fSection "Test now"
 	fIni_Reset
 	fApp_Start "Screensaver and power"
@@ -447,3 +455,4 @@ fEcho "done: ${stages[*]}"
 ##		- 2026-10-14: Dogfood to ~/.local/bin, and the session's Wayfire file in tests.
 ##		- 2026-10-14: A screenshot under a dark LXQt palette.
 ##		- 2026-10-14: Test now cases, and the key repeat test area.
+##		- 2026-10-14: The window comes up at its natural size.

@@ -13,7 +13,8 @@ import org.lxqtukz.settings
 ApplicationWindow {
 	id: win
 	title: qsTr("Settings")
-	visible: true
+	// Shown once sized. See fitContent.
+	visible: false
 	minimumWidth: 320
 	minimumHeight: 240
 
@@ -169,15 +170,29 @@ ApplicationWindow {
 		const found = decl.tabs.findIndex(t => t.path.toLowerCase() === start.toLowerCase())
 		openTab(found >= 0 ? found : leaves[0])
 		fitContent()
+		visible = true
 		// The style may settle its sizes a moment later.
 		Qt.callLater(fitContent)
 	}
 
+	// With the app drawing its own title bar, the compositor's first size for
+	// the window can count that bar in, which cuts the tallest tab off. It
+	// comes before the window is first active, so one more fit then puts it
+	// right, before anyone could have resized it.
+	property bool refitted: false
+	onActiveChanged: {
+		if (active && !refitted) {
+			refitted = true
+			fitContent()
+		}
+	}
+
 	// The natural size: the tallest tab and the widest row, plus the style's
 	// own padding, capped to the screen's work area where the rows scroll.
+	// The scroll bars' room is left out, since they go once it fits.
 	function fitContent() {
-		const w = tabColumn + scroller.contentWidth + scroller.leftPadding + scroller.rightPadding + 1
-		const h = scroller.topPadding + panelHeight + 2 * lay.pad + scroller.bottomPadding + lay.buttons_gap + footer.implicitHeight + lay.pad + 1
+		const w = tabColumn + scroller.contentWidth + scroller.leftPadding + scroller.rightPadding - scroller.effectiveScrollBarWidth + 1
+		const h = scroller.topPadding + panelHeight + 2 * lay.pad + scroller.bottomPadding - scroller.effectiveScrollBarHeight + lay.buttons_gap + footer.implicitHeight + lay.pad + 1
 		width = Math.min(Math.ceil(w), Screen.desktopAvailableWidth)
 		height = Math.min(Math.ceil(h), Screen.desktopAvailableHeight)
 	}
@@ -319,7 +334,13 @@ ApplicationWindow {
 				contentWidth: win.panelWidth + 2 * lay.pad
 				contentHeight: rowsColumn.height + 2 * lay.pad
 				clip: true
-				ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+				// Each bar is decided from the outer size. Left to itself, a bar
+				// that showed while the window was small takes room that keeps
+				// it showing after the window has grown to fit.
+				readonly property bool tall: contentHeight > height - (contentWidth > width ? ScrollBar.horizontal.implicitHeight : 0)
+				readonly property bool wide: contentWidth > width - (tall ? ScrollBar.vertical.implicitWidth : 0)
+				ScrollBar.vertical.policy: tall ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+				ScrollBar.horizontal.policy: wide ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
 
 				Column {
 					id: rowsColumn
