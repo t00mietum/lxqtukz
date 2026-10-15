@@ -24,8 +24,8 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - Paste randomly stops working in terminals. QTerminal and SilkTerm. (Critical.)
 	- ID: 2026101417551800
 	- Type: Bug
-	- Status: Waiting for answers
-	- Needs local test suite run?: Yes. A full `cicd/build.bash`, then `cicd/paste.bash`. The menu stage has to pass on the release's Wayfire 0.11.
+	- Status: Waiting for testing
+	- Needs local test suite run?: Yes. `cicd/paste.bash` menu stage on the release build, once its false pass (2026101422570842) is fixed. A scratch copy with that fixed passed on 20261014.
 	- Priority|Severity: Critical
 	- Opened: 20261014-175518
 	- Opened by: t00mietum
@@ -38,49 +38,14 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261014: ruled out on this box: no clipboard manager or other clipboard watcher runs. KDE Connect runs but has no paired device, so its clipboard plugin isn't loaded. The session log has nothing about the clipboard.
 		- 20261014: to confirm on this box with no changes: copy in FeatherPad, then right-click Paste in QTerminal pastes nothing, while Ctrl+Shift+V works. Copy in SilkTerm, then `wl-paste` in QTerminal prints the older text. Nothing in the live config fixes the first on Wayfire 0.9. The option starts at 0.10.
 		- 20261014: question: the SilkTerm half can be fixed in SilkTerm, by using the Wayland clipboard when its window is on Wayland. That's the clean fix, but it's SilkTerm's. Or LXQtukz could lift wlroots' rule, with a wlroots patch or a clipboard bridge in the session. Either lets any X11 app read the clipboard at any time, as on X11. Which way?
-	- Actual fix [Bug]: QTerminal half: the Wayfire config each release comes with turns on `focus_main_surface_instead_of_popup`, as a patch to upstream's file. SilkTerm half: open.
+	- Related IDs: 2026101422570842, 2026101509021629
+	- Decisions:
+		- 20261015: the SilkTerm half gets fixed in SilkTerm. LXQtukz also gets a clipboard bridge, from tukzclip, a separate project.
+	- Actual fix [Bug]: QTerminal half: the Wayfire config each release comes with turns on `focus_main_surface_instead_of_popup`, as a patch to upstream's file. SilkTerm half: fixed in SilkTerm, and the bridge comes from tukzclip.
 	- Branch: pastefix
 	- Commit: c230370
 	- Test case: `cicd/paste.bash` menu stage for the QTerminal half. It fails on Debian's Wayfire 0.9 (`--system`), and with the option off. Its xwayland stage is the SilkTerm half, and fails today.
 	- Swept: the Wayfire option covers context-menu paste in every Qt app, QTerminal included. Of the apps running on this box, only SilkTerm has an X11 clipboard connection.
-
-- Stop components from installing files outside the prefix. The build script lists them.
-	- ID: 2026101221490206
-	- Type: Bug
-	- Status: Waiting on signoff
-	- Priority|Severity: Avg
-	- Opened: 20261012-214902
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490200
-	- Note: likely lxqt-qtplugin's platform theme in Qt's plugin dir, xdg-desktop-portal-lxqt's D-Bus service and portal files, and polkit and systemd files.
-	- Reproduced: Yes, 20261014. The build's check listed libqtxdg's icon engine and lxqt-qtplugin's platform theme in Qt's plugin dir, and liblxqt's polkit action for the backlight helper.
-	- Actual cause: all 3 take their install dir from Qt or PolkitQt, not from the prefix. The portal, autostart and systemd files already went to the prefix.
-	- Actual fix: configure flags put all 3 under the prefix. lxqt-qtplugin and liblxqt each needed a small patch to accept one. The session already adds the prefix's plugin dir to `QT_PLUGIN_PATH`.
-	- Note: the polkit action does nothing from the prefix. Filed as its own item.
-	- Branch: prefixfix
-	- Commit: 95549c0, fdc2866
-	- Test case: the check in `cicd/build.bash` for files outside the prefix. With the new flags moved aside it lists all 3 files; the full build passes it.
-	- Swept: every install rule in the pinned components that doesn't use the prefix's own install dirs. The 3 above were the only ones outside the prefix.
-
-- Run `cicd/build.bash` all the way through in the Debian 13 container.
-	- ID: 2026101221490205
-	- Type: Task
-	- Status: Waiting on signoff
-	- Opened: 20261012-214902
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490200
-	- Note: the Dockerfile package list and `upstream/flags/*` will likely need fixes.
-	- Progress log:
-		- 20261014: missing LXQt components added: qtxdg-tools for lxqt-session, libsysstat for the panel's system monitor.
-		- 20261014: the build image got the Debian packages the first full build asked for.
-		- 20261014: pcmanfm-qt 2.4.1 wants a newer layer-shell-qt than Debian 13 has. A patch uses the older API for the same thing.
-		- 20261014: Wayfire's bundled wlroots needs newer wayland, wayland-protocols, libdrm, xkbcommon and pixman than Debian 13 has. They're built into the prefix on Debian only.
-	- Decisions:
-		- 20261014: the newer libraries are built in, rather than pinning an older Wayfire, since the paste fix needs Wayfire 0.11. Recorded in design.md.
-	- Branch: prefixfix
-	- Commit: 95549c0, 91976e1, fdc2866
-	- Test case: `cicd/build.bash` itself. It stopped at lxqt-session before, and runs through to the release assets after.
-	- Verified: 20261014, `cicd/build.bash` from clean ran through twice: nothing outside the prefix, staged, and the archive, dependency list and sums written. The sums check out.
 
 - Make D-Bus started services use the prefix instead of `/usr`. That covers notifications, the portal and the polkit agent.
 	- ID: 2026101221490207
@@ -162,6 +127,29 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Parent ID: 2026101221490200
 	- Related IDs: 2026101221490206
 	- Note: polkit only reads `/usr/share/polkit-1/actions`, so the installer would link it there. Its action id is the same as Debian's liblxqt one, so it needs its own file name and id first. Unverified that the password prompt happens.
+
+- tukzclip: our own clipboard program. Keeps the clipboard after the app that copied closes, and bridges the Wayland and X11 clipboards.
+	- ID: 2026101509021629
+	- Type: Feature
+	- Status: Queued
+	- Opened: 20261015-090216
+	- Opened by: t00mietum
+	- Related IDs: 2026101417551800
+	- Requirements:
+		- A separate project under the tukzedo umbrella.
+		- Named 'tukzclip'.
+		- A program that shows up as an icon in the system tray.
+		- By default, it does two things:
+			- Keeps the clipboard contents in memory for a predefined length of time (default 60m).
+			- Bridges Wayland and X11 clipboard.
+		- Additional optional features, off by default:
+			- Convert the contents to (UTF-8) text-only.
+			- Run a command-line with the clipboard contents as the argument.
+			- Keep a history a user-adjustable X slots long, and for at most Y minutes each.
+			- Persist history between runs. (With a warning about secrets being on storage.)
+	- Note: we need a clipboard bridge anyway, even if we weren't using Wayfire, because X11 has a "feature" (bug), where if you copy contents from say a text editor, then close that editor before pasting it somewhere, the clipboard contents disappear. This is "surprising", to say the least. Since a clipboard is "global" to a user's session and works between apps, you'd expect that closing the program doesn't clear it. I get that it might be due to "security concerns", but that is a total half-measure.
+	- Note: Wayland does the same. The clipboard belongs to the app that set it, and is gone when that app exits.
+	- Note: the project doesn't exist yet. Once it does, this item moves to its backlog.
 
 - Milestone 1 - First Debian build
 	- ID: 2026101221490200
@@ -411,6 +399,26 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Reproduced: Yes, 20261014, in the session check's Wayfire log. The `[fisheye]` binding does nothing.
 	- Possible fix: build wayfire-plugins-extra as a component, or drop fisheye from the release's plugin list.
 
+- Stop components from installing files outside the prefix. The build script lists them.
+	- ID: 2026101221490206
+	- Type: Bug
+	- Status: Done
+	- Priority|Severity: Avg
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: likely lxqt-qtplugin's platform theme in Qt's plugin dir, xdg-desktop-portal-lxqt's D-Bus service and portal files, and polkit and systemd files.
+	- Reproduced: Yes, 20261014. The build's check listed libqtxdg's icon engine and lxqt-qtplugin's platform theme in Qt's plugin dir, and liblxqt's polkit action for the backlight helper.
+	- Actual cause: all 3 take their install dir from Qt or PolkitQt, not from the prefix. The portal, autostart and systemd files already went to the prefix.
+	- Actual fix: configure flags put all 3 under the prefix. lxqt-qtplugin and liblxqt each needed a small patch to accept one. The session already adds the prefix's plugin dir to `QT_PLUGIN_PATH`.
+	- Note: the polkit action does nothing from the prefix. Filed as its own item.
+	- Branch: prefixfix
+	- Commit: 95549c0, fdc2866
+	- Test case: the check in `cicd/build.bash` for files outside the prefix. With the new flags moved aside it lists all 3 files; the full build passes it.
+	- Swept: every install rule in the pinned components that doesn't use the prefix's own install dirs. The 3 above were the only ones outside the prefix.
+	- Acceptance signoff: t00mietum, 20261015
+	- Closed: 20261015-090216
+
 - `cicd/build.bash <component>` can't stage. The container's prefix starts empty on every run, so a partial build has nothing to finish.
 	- ID: 2026101415260903
 	- Type: Bug
@@ -427,6 +435,28 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Verified: 20261014, after a full build `cicd/build.bash lxqt-build-tools` staged and exited 0.
 	- Acceptance signoff: Self-closed: intent clear, test passes.
 	- Closed: 20261014-225457
+
+- Run `cicd/build.bash` all the way through in the Debian 13 container.
+	- ID: 2026101221490205
+	- Type: Task
+	- Status: Done
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: the Dockerfile package list and `upstream/flags/*` will likely need fixes.
+	- Progress log:
+		- 20261014: missing LXQt components added: qtxdg-tools for lxqt-session, libsysstat for the panel's system monitor.
+		- 20261014: the build image got the Debian packages the first full build asked for.
+		- 20261014: pcmanfm-qt 2.4.1 wants a newer layer-shell-qt than Debian 13 has. A patch uses the older API for the same thing.
+		- 20261014: Wayfire's bundled wlroots needs newer wayland, wayland-protocols, libdrm, xkbcommon and pixman than Debian 13 has. They're built into the prefix on Debian only.
+	- Decisions:
+		- 20261014: the newer libraries are built in, rather than pinning an older Wayfire, since the paste fix needs Wayfire 0.11. Recorded in design.md.
+	- Branch: prefixfix
+	- Commit: 95549c0, 91976e1, fdc2866
+	- Test case: `cicd/build.bash` itself. It stopped at lxqt-session before, and runs through to the release assets after.
+	- Verified: 20261014, `cicd/build.bash` from clean ran through twice: nothing outside the prefix, staged, and the archive, dependency list and sums written. The sums check out.
+	- Acceptance signoff: t00mietum, 20261015
+	- Closed: 20261015-090216
 
 - Branch protection.
 	- ID: 2026101222253900
