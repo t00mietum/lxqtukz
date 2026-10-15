@@ -134,7 +134,7 @@ LXQt 2.4 and Wayfire 0.11.0 are pinned. Build order is the order of lines in `co
 
 - Wayfire 0.11 needs wlroots 0.20, and Debian 13 doesn't have it. So Wayfire builds its own pinned wlroots and wf-config submodules in, statically, per `upstream/flags/wayfire`. To patch wlroots, it would have to become its own component first.
 
-- wlroots 0.20 also needs newer wayland, wayland-protocols, libdrm, xkbcommon and pixman than Debian 13 has. They're pinned as components too, built into the prefix just before Wayfire, with `-` in the `nix` column so NixOS keeps nixpkgs' own. Programs that link them directly load ours through the rpath, and each is backward compatible with what Debian's Qt, cairo and Mesa were built against. xkbcommon still reads the system's keymaps.
+- wlroots 0.20 also needs newer wayland, wayland-protocols, libdrm, xkbcommon and pixman than Debian 13 has. They're pinned as components too, built into the prefix right before Wayfire, with `-` in the `nix` column so NixOS keeps nixpkgs' own. Programs that link them directly load ours through the rpath, and each is backward compatible with what Debian's Qt, cairo and Mesa were built against. xkbcommon still reads the system's keymaps.
 
 - pcmanfm-qt 2.4.1 wants layer-shell-qt 6.6, and Debian 13 has 6.3. A patch uses 6.3's API for the same thing.
 
@@ -184,7 +184,7 @@ Some components keep settings outside `LXQt::Settings` and aren't covered yet: p
 
 - It hands `XDG_DATA_DIRS`, `XDG_CURRENT_DESKTOP` and a few more to D-Bus and the systemd user manager. Debian's `xdg-desktop-portal` runs as a systemd user service, and finds `lxqt.portal` and `lxqt-portals.conf` in the prefix through them. lxqt-session hands over the rest of the session's environment once Wayfire is up, but only to D-Bus.
 
-- lxqt-session starts the portal as Qt starts up, before it hands over that environment. So the release's `wayfire.ini` hands `WAYLAND_DISPLAY` and `DISPLAY` to D-Bus and systemd on the `session` line, just before `lxqt-session`. Without it the LXQt portal finds no display and dies, and xdg-desktop-portal leaves its file chooser out for the rest of the session.
+- lxqt-session starts the portal as Qt starts up, before it hands over that environment. So the release's `wayfire.ini` hands `WAYLAND_DISPLAY` and `DISPLAY` to D-Bus and systemd on the `session` line, right before `lxqt-session`. Without it the LXQt portal finds no display and dies, and xdg-desktop-portal leaves its file chooser out for the rest of the session.
 
 - It sets up the user's `wayfire.ini` with upstream's keyboard layout guess, then runs `exec wayfire -c` on it. Wayfire's `[autostart]` starts `lxqt-session`.
 

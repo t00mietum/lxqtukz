@@ -95,7 +95,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Related IDs: 2026101221490209
 	- Reproduced: Partly, 20261014. In the test container, the bus couldn't start our portal without the fix. That a bus systemd starts before login never looks in the prefix, and that Debian's xdg-desktop-portal runs with the systemd user environment, is from reading only.
 	- Actual cause: only the portal is D-Bus started. Notifications and the polkit agent are started by lxqt-session from the prefix's autostart entries, by name, with the prefix first in `PATH`, so they already use the prefix.
-	- Actual fix: `startlxqtukz` copies the prefix's D-Bus service files into the bus's runtime dir, which the bus reads on demand, and drops the systemd hand-off from them. It also gives the session's `XDG_DATA_DIRS` and desktop name to D-Bus and systemd, so xdg-desktop-portal finds our portal and its config. The release's `wayfire.ini` hands over the display just before lxqt-session starts, since lxqt-session starts the portal before it hands over its own environment. `xdg-desktop-portal` joined the release's dependency list.
+	- Actual fix: `startlxqtukz` copies the prefix's D-Bus service files into the bus's runtime dir, which the bus reads on demand, and drops the systemd hand-off from them. It also gives the session's `XDG_DATA_DIRS` and desktop name to D-Bus and systemd, so xdg-desktop-portal finds our portal and its config. The release's `wayfire.ini` hands over the display right before lxqt-session starts, since lxqt-session starts the portal before it hands over its own environment. `xdg-desktop-portal` joined the release's dependency list.
 	- Progress log:
 		- 20261014: the new session check found the launcher stopped when `LANG` was unset. Fixed.
 		- 20261014: the same check found lxqt-session starts the portal before the display is known. The LXQt portal died, and xdg-desktop-portal left the file chooser out for the whole session.
@@ -409,7 +409,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Opened: 20261014-152609
 	- Opened by: t00mietum
 	- Reproduced: Yes, 20261014. `cicd/build.bash lxqt-build-tools` stopped at staging, with no `lxqt-wayfire.ini` in the prefix.
-	- Actual cause: the container's `/opt` is new on every run, so a partial build's prefix had only the components it just built.
+	- Actual cause: the container's `/opt` is new on every run, so a partial build's prefix had only the components that run built.
 	- Actual fix: the prefix is kept in `work/prefix/` and mounted into the container. A partial build over a prefix that no full build has finished says so, and skips staging.
 	- Branch: prefixfix
 	- Commit: 40210be
