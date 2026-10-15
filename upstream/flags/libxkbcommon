@@ -1,0 +1,10 @@
+##	Extra configure arguments for libxkbcommon, one per line.
+##	Keymaps are the system's; the defaults would look for them in the prefix.
+-Dxkb-config-root=/usr/share/X11/xkb
+-Dxkb-config-extra-path=/etc/xkb
+-Dx-locale-root=/usr/share/X11/locale
+-Denable-tools=false
+-Denable-x11=false
+-Denable-wayland=false
+-Denable-docs=false
+-Denable-xkbregistry=false

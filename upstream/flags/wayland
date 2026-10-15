@@ -1,0 +1,5 @@
+##	Extra configure arguments for wayland, one per line.
+##	Debian 13 has 1.23; the wlroots Wayfire 0.11 bundles needs 1.24.
+-Ddocumentation=false
+-Dtests=false
+-Ddtd_validation=false

@@ -1,0 +1,3 @@
+##	Extra configure arguments for lxqt-qtplugin, one per line.
+##	Relative, so it lands under the install prefix rather than in Qt's own plugin dir.
+-DQT_PLUGINS_DIR=lib/qt6/plugins

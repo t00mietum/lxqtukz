@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	libglm-dev libseat-dev libdisplay-info-dev libliftoff-dev hwdata libvulkan-dev glslang-tools \
 	liblcms2-dev libxcb-render-util0-dev libxcb-errors-dev xwayland libgomp1 \
 	qt6-declarative-dev qt6-declarative-dev-tools curl \
+	libproc2-dev xdg-user-dirs xserver-xorg-input-libinput-dev libxcb-dpms0-dev libxcb-screensaver0-dev libyyjson-dev \
+	libxcb-randr0-dev libexpat1-dev libffi-dev bison \
 	&& rm -rf /var/lib/apt/lists/*
 
 ##	Rust for our own apps. Pinned here and in each crate's rust-toolchain.toml;
