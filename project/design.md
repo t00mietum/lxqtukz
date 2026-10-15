@@ -86,7 +86,7 @@ It follows upstream releases for as long as the project lives. The patches may g
 - `cicd/`: `upstream.bash` for tracking and patch queues, `build.bash` for the Debian build, `linux/Dockerfile` for the build container, and shared helpers in `utility/`, including `stage-prefix.bash`.
 	- `settings.bash` checks the settings app and runs it on a headless Wayfire, in the test container from `linux/Dockerfile.test`. Last, on the host, it copies the release build to `~/.local/bin/lxqtukz-settings`. Only the latest is kept.
 	- `paste.bash` checks copy and paste between apps on a headless Wayfire, using the release build's Wayfire and QTerminal, in the same container.
-	- `session.bash` starts the release build's session on a headless Wayfire with its own session bus, in the same container. It checks that the wallpaper, D-Bus started services and the portal come from the prefix.
+	- `session.bash` starts the release build's session on a headless Wayfire with its own session bus, in the same container. It checks that the wallpaper, D-Bus started services and the portal come from the prefix, and that the lock key and the idle lock lock the screen with gtklock.
 
 - `nix/`: overlay, package and NixOS module. `flake.nix` is at the root.
 
@@ -152,7 +152,7 @@ There are 2 settings areas, one for users and one for the system.
 
 | Scope   | Directory                                          | Contents
 | :---    | :---                                               | :---
-| User    | `$XDG_CONFIG_HOME/lxqtukz/` (`~/.config/lxqtukz/`) | every LXQt module's `.conf`, `session.conf`, `wayfire.ini`
+| User    | `$XDG_CONFIG_HOME/lxqtukz/` (`~/.config/lxqtukz/`) | every LXQt module's `.conf`, `session.conf`, `wayfire.ini`, `gtklock.ini`
 | System  | `/etc/xdg/lxqtukz/`                                | same file names, the admin's defaults, plus `update.conf`
 | Release | `<prefix>/etc/xdg/lxqtukz/`                        | the defaults that come with each release
 
@@ -191,6 +191,12 @@ Some components keep settings outside `LXQt::Settings` and aren't covered yet: p
 - Wayfire runs `[autostart]` lines through `sh`. So the wallpaper line in the release's `wayfire.ini` says `${LXQTUKZ_PREFIX}/share/lxqt/...`, and the user's copy keeps working after an update and a prune. `stage-prefix.bash` rewrites upstream's `/usr/share/lxqt/` paths that way, and fails if a `/usr` path is left for a file the prefix has.
 
 - The notification daemon and the polkit agent aren't D-Bus started. lxqt-session starts them from the autostart entries in `<prefix>/etc/xdg/autostart`, by name, with the prefix first in `PATH`.
+
+- The lock screen is gtklock. Upstream leaves LXQt's Wayland lock command empty, so nothing locked. The release's `session.conf` sets it to `lxqtukz-lock`, so the lock key, the panel, the leave dialog, and lxqt-session's lock before sleep all run that.
+	- `lxqtukz-lock` runs `gtklock -d` with the first `gtklock.ini` it finds in the user, system and release settings areas. It returns once the screen is locked, which is when lxqt-session lets a suspend go ahead.
+	- If gtklock is already running it does nothing. A second gtklock can't lock, and LXQt would show an error box for it.
+	- The release's `wayfire.ini` starts swayidle, which runs `lxqt-leave --lockscreen` after an hour idle. That's when Wayfire's screensaver starts by default.
+	- The user name comes from gtklock's userinfo module, which reads it from AccountsService.
 
 ## Install layout and versions
 
@@ -285,3 +291,5 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 - 2026-10-14: D-Bus services from the prefix go through the bus's runtime dir rather than a system-wide `session.d` config. It needs no root, and other users and other desktops don't see our services, unless another desktop shares the bus with a running LXQtukz session.
 
 - 2026-10-14: Wayfire's `focus_main_surface_instead_of_popup` workaround is on in the `wayfire.ini` that comes with each release. Without it, a Qt context menu's Paste pastes nothing that another app copied. It's a patch to upstream's file rather than our own copy, since LXQt upstream may want it too.
+
+- 2026-10-15: gtklock is the screen locker. It's packaged for both Debian 13 and NixOS, and it shows a password box, "Login failed" for a wrong password, and with its userinfo module the user name. It needs ext-session-lock-v1, which is Wayfire's session-lock plugin, in Wayfire 0.11.

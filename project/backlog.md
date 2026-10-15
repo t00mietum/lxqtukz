@@ -78,6 +78,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Opened: 20261014-122850
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490202
+	- Related IDs: 2026101513313865
 	- Requirements:
 		- Need a screensaver manager and screen power management app. Something simple and intuitive, like XFCE4's, but integrated into the settings app.
 		- Keyboard settings (delay, speed, shortcuts). Like XFCE4's, but integrated into the settings app.
@@ -87,22 +88,40 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261014: labels were unreadable under a dark theme. Fixed.
 		- 20261014: a "Test now" icon on screen off and the screensaver, and a test area for key repeat.
 		- 20261014: the tallest tab's last row was cut off when the window opened. Fixed.
+		- 20261015: the lock screen is gtklock, through LXQt's lock command (`lxqtukz-lock`, item 2026101513313865). The idle lock is a swayidle line in `wayfire.ini`'s `[autostart]`, at 60 minutes, so a lock screen row would edit that line.
 
 - The screen is locked, only shows a green circle, won't accept my password (and has no box for feedback), and I can't tell what user it thinks is logged in. (Critical, pre-next-cut.)
 	- ID: 2026101513313865
 	- Type: Bug
-	- Status: Queued
+	- Status: Waiting for testing
+	- Needs local test suite run?: Yes. A full `cicd/build.bash` from clean, then `cicd/session.bash` on its release.
+	- Needs external testing: A real login on Debian, as tukztest: the user name shows, the right password unlocks, the idle lock after an hour, and the lock before suspend. On NixOS, the first build and a login (milestone 2).
 	- Priority|Severity: Critical
 	- Opened: 20261015-133138
 	- Opened by: t00mietum
 	- Related IDs: 2026101412285001
 	- Test environment: this box, the stock LXQt session on Wayfire 0.9.0. The locker is swaylock 1.8.2, started by swayidle after 60 minutes idle. It was put in as a stopgap until the move to XFCE.
+	- Reproduced: Yes, 20261015, on the release build, headless in the test container. The lock key ran `lxqt-leave --lockscreen`, which then waited forever and locked nothing. Nothing locked when idle.
 	- Possible cause: swaylock with default options shows a blank screen. A ring shows only while typing: green as keys go in, blue while checking, red when wrong. There's no password box, no user name and no message, so a typo or a Caps Lock or layout problem looks the same as a hang.
 	- Progress log:
 		- 20261015: swaylock is running and holds both screens. Only one password try reached PAM, at 12:46, and it was rejected as a wrong password. The ZFS home unlock step after it never ran.
 		- 20261015: sending swaylock SIGUSR1 unlocks the screen, per its man page. Not tried yet.
 		- 20261015: the LXQtukz lock screen in the Settings item isn't done yet. It needs a password box, the user name, and a message on a failed try.
 		- 20261015: the password worked when typed more carefully. So unlocking works, and the bug is the missing feedback.
+		- 20261015: this box's own session is XFCE now, and the swaylock stopgap was only in the live config, never in the release. What's left is what LXQtukz itself locks with.
+		- 20261015: Wayfire 0.11's session-lock plugin is ext-session-lock-v1, which gtklock 4 needs. Our build has it.
+		- 20261015: gtklock shows a password box, "Login failed" for a wrong password, a Caps Lock warning, and with its userinfo module the user name. The name comes from AccountsService, so the headless check can't show it; it only checks that the module loads.
+		- 20261015: `gtklock -d` gives up waiting after 1 second. If locking is slower than that, the screen still locks, but LXQt shows an error box after the unlock. Headless it took about half a second.
+		- 20261015: for signoff: the idle lock is swayidle after 60 minutes, the same as Wayfire's default screensaver time. The Settings app's screensaver timeout doesn't move it yet.
+	- Actual cause: the release sets no locker. Upstream leaves LXQt's Wayland lock command empty, and the swayidle line in upstream's `wayfire.ini` is commented out. So the lock key did nothing and the session never locked when idle. The swaylock seen on this box was a stopgap in the live config with default options, which show no feedback.
+	- Decisions:
+		- 20261015: LXQtukz's locker is gtklock, since it has to work on both Debian 13 (gtklock 4.0.0 in trixie) and NixOS (nixpkgs has gtklock).
+	- Actual fix [Bug]: the release's `session.conf` sets LXQt's Wayland lock command to the new `lxqtukz-lock`, which runs gtklock with a `gtklock.ini` from the usual settings areas, and does nothing if the screen is already locked. A patch to upstream's `wayfire.ini` starts swayidle, which locks after an hour idle. The Debian deps list adds gtklock, its userinfo module, AccountsService, the SVG loader its icons need, swayidle and procps. The NixOS module adds gtklock, swayidle, gtklock's PAM service, AccountsService and a `gtklock.ini` with the module's store path.
+	- Branch: gtklock
+	- Commit: e39c62b
+	- Test case: `cicd/session.bash`, its Lock screen checks. They fail on the release built before the fix: no swayidle, no gtklock, and lxqt-leave left waiting. They pass after. Taking out the already-locked guard, or skipping the wrong password, turns them red.
+	- Verified: headless in the test container, on a release staged from this branch: the lock key locks in about half a second, the lock screen shows the password box, a wrong password shows "Login failed" and stays locked, and locking again while locked is quiet. The NixOS module evaluates, with gtklock 4.0.0, swayidle 1.9.0, the PAM service and the module path.
+	- Swept: every LXQt way to lock goes through the one lock command: lxqt-leave (lock key, leave dialog, panel), lxqt-session (before sleep, logind's lock), lxqt-runner, and lxqt-powermanagement's idle action. lxqt-globalkeys' Ctrl+Alt+L and xscreensaver are X11-only and don't start in this session.
 
 - The backlight helper's polkit action is in the prefix, where polkit never reads it. Brightness keys may ask for an admin password.
 	- ID: 2026101421433387

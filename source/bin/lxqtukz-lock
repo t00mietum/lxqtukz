@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+##	- Purpose: Locks the screen with gtklock. The release's session.conf names
+##	  this as LXQt's Wayland lock command, so the lock key, the panel and
+##	  leave dialog, the idle lock and the lock before sleep all come here.
+##	- gtklock's settings are the first of these found:
+##	    user:    ${XDG_CONFIG_HOME:-~/.config}/lxqtukz/gtklock.ini
+##	    system:  /etc/xdg/lxqtukz/gtklock.ini
+##	    vendor:  <prefix>/etc/xdg/lxqtukz/gtklock.ini
+##	- Returns once the screen is locked, since lxqt-session keeps a suspend
+##	  waiting until then.
+##	- Syntax: lxqtukz-lock [gtklock option...]
+##	History: At bottom of script.
+
+##	Copyright © 2026 t00mietum (CryptogID: ปʬϝღถɔ4რఠΔթะ9ƾǝu)
+##	Licensed under The MIT License (MIT). Full text at:
+##		https://mit-license.org/
+##	SPDX-License-Identifier: MIT
+
+
+set -uo pipefail
+
+## A second gtklock can't lock a session that's already locked. It exits 1,
+## and LXQt shows an error box for that after the unlock. Idle and sleep both
+## get here while locked. Only this session's display counts, since the same
+## user may have another session.
+for pid in $(pgrep -xu "${UID}" gtklock); do
+	mapfile -d '' -t lockEnv 2>/dev/null < "/proc/${pid}/environ" || continue
+	for var in "${lockEnv[@]}"; do
+		if [[ "${var}" == "WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-}" ]]; then exit 0; fi
+	done
+done
+
+prefix="${LXQTUKZ_PREFIX:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+for conf in "${XDG_CONFIG_HOME:-${HOME}/.config}/${LXQT_CONFIG_NAME:-lxqtukz}/gtklock.ini" \
+	"/etc/xdg/lxqtukz/gtklock.ini" "${prefix}/etc/xdg/lxqtukz/gtklock.ini"; do
+	if [[ -r "${conf}" ]]; then exec gtklock -d -c "${conf}" "$@"; fi
+done
+exec gtklock -d "$@"
+
+
+##	History:
+##		- 2026-10-15: Created.

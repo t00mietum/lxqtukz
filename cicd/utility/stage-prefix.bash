@@ -48,6 +48,7 @@ fPlace(){ ## mode source dest
 # Our own files
 
 fPlace 0755 "${src}/bin/startlxqtukz"  "${prefix}/bin/startlxqtukz"
+fPlace 0755 "${src}/bin/lxqtukz-lock"  "${prefix}/bin/lxqtukz-lock"
 ## The installer is the updater; one script, so the two can't disagree.
 fPlace 0755 "${REPO_ROOT}/install.bash" "${prefix}/bin/lxqtukz-update"
 for unit in "${src}"/lib/systemd/system/*; do
@@ -97,14 +98,19 @@ while read -r used; do
 done < <(grep -oE '\$\{LXQTUKZ_PREFIX\}/[^[:space:]"'\'']+' <<< "${wayfireActive}" | sed 's|^\${LXQTUKZ_PREFIX}/||' || true)
 cp -RL --no-preserve=mode "${src}/etc/xdg/lxqtukz/." "${vendor}/"
 
-## Only Wayfire is offered, so upstream's compositor chooser has nothing to choose.
-if [[ -f "${vendor}/session.conf" ]]; then
-	if grep -q '^compositor[[:space:]]*=' "${vendor}/session.conf"; then
-		sed -i 's|^compositor[[:space:]]*=.*|compositor=wayfire|' "${vendor}/session.conf"
+fGeneral_Set(){ ## file key value
+	if grep -q "^$2[[:space:]]*=" "$1"; then
+		sed -i "s|^$2[[:space:]]*=.*|$2=$3|" "$1"
 	else
-		sed -i '0,/^\[General\]/s||[General]\ncompositor=wayfire|' "${vendor}/session.conf"
+		sed -i "0,/^\\[General\\]/s||[General]\\n$2=$3|" "$1"
 	fi
-fi
+}
+[[ -f "${vendor}/session.conf" ]] || fDie "missing ${vendor}/session.conf; was lxqt-session built?"
+## Only Wayfire is offered, so upstream's compositor chooser has nothing to choose.
+fGeneral_Set "${vendor}/session.conf" compositor wayfire
+## Upstream leaves LXQt's Wayland lock command empty, and then nothing locks.
+fGeneral_Set "${vendor}/session.conf" lock_command_wayland lxqtukz-lock
+grep -q '^lock_command_wayland=lxqtukz-lock$' "${vendor}/session.conf" || fDie "session.conf has no [General] section for the lock command"
 
 
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
@@ -133,3 +139,4 @@ fEcho "staged ${prefix} (${version}, ${target})"
 ##	History:
 ##		- 2026-10-12: Created.
 ##		- 2026-10-14: wayfire.ini paths under /usr point at the prefix.
+##		- 2026-10-15: gtklock is the screen locker.

@@ -17,6 +17,13 @@ let
     FLAKE=${cfg.autoUpdate.flake}
     NIXOS_REBUILD=${cfg.autoUpdate.operation}
   '';
+
+  ## The release's copy names the module as Debian has it, under gtklock's own
+  ## lib dir. On NixOS it's in a store path of its own.
+  gtklockConf = ''
+    [main]
+    modules=${pkgs.gtklock-userinfo-module}/lib/gtklock/userinfo-module.so
+  '';
 in
 {
   options.services.lxqtukz = {
@@ -78,13 +85,19 @@ in
   config = mkIf cfg.enable {
     nixpkgs.overlays = [ self.overlays.default ];
 
-    environment.systemPackages = [ cfg.package ];
+    ## The lock screen: lxqtukz-lock runs gtklock, and swayidle is the idle
+    ## lock in wayfire.ini. gtklock can't unlock without a PAM service of its
+    ## own, and its user name module reads AccountsService.
+    environment.systemPackages = [ cfg.package pkgs.gtklock pkgs.swayidle ];
+    security.pam.services.gtklock = { };
+    services.accounts-daemon.enable = lib.mkDefault true;
     services.displayManager.sessionPackages = [ cfg.package ];
 
     environment.etc = {
       ## Read by lxqtukz-update --status to report the active version.
       "xdg/lxqtukz/manifest".source = "${cfg.package}/share/lxqtukz/manifest";
       "xdg/lxqtukz/update.conf".source = updateConf;
+      "xdg/lxqtukz/gtklock.ini".text = gtklockConf;
     } // lib.mapAttrs' (name: value: lib.nameValuePair "xdg/lxqtukz/${name}"
       (if builtins.isPath value || lib.isStorePath value then { source = value; } else { text = value; }))
       cfg.settings;

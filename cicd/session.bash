@@ -9,6 +9,8 @@
 ##	    - the wallpaper Wayfire's [autostart] hands to swaybg
 ##	    - D-Bus started services, through the bus's runtime service dir
 ##	    - xdg-desktop-portal finding our portal and its config
+##	    - the lock key and the idle lock: gtklock locks the session, with the
+##	      user name module, and shows "Login failed" for a wrong password
 ##	- The release comes from cicd/artifacts/release/, extracted to the path it
 ##	  was built for.
 ##	- Syntax: cicd/session.bash [--here]
@@ -36,6 +38,8 @@ VERSION="$(tr -d '[:space:]' < "${REPO_ROOT}/version")"
 PREFIX="/opt/lxqtukz/versions/${VERSION}"
 EXTRACTED="${REPO_ROOT}/work/test/prefix"
 PORTAL="org.freedesktop.impl.portal.desktop.lxqt"
+KEYS="${REPO_ROOT}/cicd/utility/wayfire-keys.py"
+SHOTS="${REPO_ROOT}/cicd/artifacts/session"
 
 declare -i here=0
 while (($#)); do case "$1" in
@@ -69,8 +73,10 @@ if ((! here)); then
 	passwd="${REPO_ROOT}/work/test/passwd"
 	mkdir -p "${passwd%/*}"
 	{ echo "root:x:0:0:root:/root:/bin/bash"; echo "tester:x:$(id -u):$(id -g):tester:/tmp:/bin/bash"; } > "${passwd}"
+	mkdir -p "${SHOTS}"
 	docker run --rm -i \
 		-v "${REPO_ROOT}:/src:ro" -w /src \
+		-v "${SHOTS}:/src/cicd/artifacts/session" \
 		-v "${passwd}:/etc/passwd:ro" \
 		-v "${EXTRACTED}/${VERSION}:${PREFIX}:ro" \
 		--user "$(id -u):$(id -g)" -e HOME=/tmp \
@@ -88,8 +94,10 @@ export HOME="${run}/home" XDG_RUNTIME_DIR="${run}/runtime"
 mkdir -p "${HOME}" "${XDG_RUNTIME_DIR}"; chmod 700 "${XDG_RUNTIME_DIR}"
 unset XDG_DATA_DIRS XDG_CONFIG_DIRS XDG_CONFIG_HOME XDG_DATA_HOME DISPLAY WAYLAND_DISPLAY
 
-busPid="" sessionPid=""
+busPid="" sessionPid="" lockPid=""
 fStopAll(){
+	## gtklock is detached from the session, so it's stopped on its own.
+	[[ -z "${lockPid}" ]] || kill "${lockPid}" 2>/dev/null || true
 	[[ -z "${sessionPid}" ]] || kill "${sessionPid}" 2>/dev/null || true
 	[[ -z "${busPid}" ]] || kill "${busPid}" 2>/dev/null || true
 }
@@ -128,7 +136,7 @@ export DBUS_SESSION_BUS_ADDRESS="$(head -n1 "${run}/bus.address")"
 fEcho "${DBUS_SESSION_BUS_ADDRESS}"
 
 fSection "Start the session"
-export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1
+export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 _WAYFIRE_SOCKET="${run}/wayfire.socket"
 if [[ -r /dev/dri/renderD128 ]]; then
 	export WLR_RENDERER=gles2 WLR_RENDER_DRM_DEVICE=/dev/dri/renderD128
 else
@@ -190,6 +198,83 @@ else
 	fi
 fi
 
+fSection "Lock screen"
+## A key's value in the user's wayfire.ini, continuation lines joined.
+fIni(){ ## section key
+	S="[$1]" K="$2" awk '
+		/^\[/ { on = ($0 == ENVIRON["S"]); next }
+		on && !more && $0 ~ ("^" ENVIRON["K"] "[[:space:]]*=") { sub(/^[^=]*=[[:space:]]*/, ""); more = 1 }
+		more { line = $0; cont = sub(/[[:space:]]*\\$/, "", line); out = out " " line; if (!cont) exit }
+		END { gsub(/[[:space:]]+/, " ", out); sub(/^ /, "", out); print out }' "${userIni}"
+}
+fEcho "plugins: $(fIni core plugins)"
+fEcho "$(fIni command binding_lock) -> $(fIni command command_lock)"
+fEcho "idle: $(fIni autostart idle)"
+fEcho "session.conf: $(grep -h '^lock_command_wayland' "${PREFIX}/etc/xdg/lxqtukz/session.conf" || echo 'no lock_command_wayland')"
+## gtklock needs ext-session-lock-v1, which is Wayfire's session-lock plugin.
+if [[ " $(fIni core plugins) " == *" session-lock "* ]] && ! grep -q 'Failed to load plugin "session-lock"' "${run}/session.log"; then
+	fCheck "session-lock plugin loaded" ok
+else
+	fCheck "session-lock plugin loaded" fail
+fi
+idlePid="$(pgrep -xu "${UID}" swayidle | head -n1 || true)"
+idleArgs=""
+[[ -z "${idlePid}" ]] || idleArgs="$(tr '\0' ' ' < "/proc/${idlePid}/cmdline")"
+fEcho "swayidle: ${idleArgs:-not running}"
+if [[ "${idleArgs}" == *" timeout "*" lxqt-leave --lockscreen"* ]]; then fCheck "swayidle locks the session when idle" ok; else
+	fCheck "swayidle locks the session when idle" fail "${idleArgs:-not running}"
+fi
+
+## stipc presses the keys. The release doesn't load it, and Wayfire picks up a
+## change to its file as it runs.
+sed -i 's/^plugins[[:space:]]*=[[:space:]]*\\$/&\n  stipc \\/' "${userIni}"
+export WAYFIRE_SOCKET="${_WAYFIRE_SOCKET}"
+export WAYLAND_DISPLAY="$(find "${XDG_RUNTIME_DIR}" -maxdepth 1 -type s -name 'wayland-*' -printf '%f\n' | head -n1 || true)"
+fKeys(){ python3 -I "${KEYS}" "$@" >/dev/null 2>&1; }
+fWaitFor fKeys shift || fDie "stipc did not load; check the plugins line in ${userIni}"
+grim "${run}/unlocked.png"
+fGtklock(){ pgrep -xu "${UID}" gtklock >/dev/null; }
+fLeaveGone(){ ! pgrep -xu "${UID}" lxqt-leave >/dev/null; }
+started="$(date +%s%N)"
+fKeys super+shift+Escape
+if fWaitFor fGtklock; then fCheck "the lock key starts gtklock" ok; else fCheck "the lock key starts gtklock" fail "$(pgrep -a -u "${UID}" lxqt-leave || true)"; fi
+## lxqt-leave waits for the lock command. Still there means nothing locked,
+## or it showed an error box: gtklock -d exits 1 if the lock takes over a second.
+if fWaitFor fLeaveGone; then
+	fCheck "lxqt-leave returns once locked" ok
+	fEcho "locked in $(( ($(date +%s%N) - started) / 1000000 )) ms"
+else
+	fCheck "lxqt-leave returns once locked" fail "still running"
+fi
+lockPid="$(pgrep -xu "${UID}" gtklock | head -n1 || true)"
+if [[ -n "${lockPid}" ]]; then
+	fEcho "gtklock: $(readlink "/proc/${lockPid}/exe" || true) $(tr '\0' ' ' < "/proc/${lockPid}/cmdline" | cut -d' ' -f2-)"
+	if grep -q '/gtklock/userinfo-module\.so$' "/proc/${lockPid}/maps"; then fCheck "gtklock loads the user name module" ok; else fCheck "gtklock loads the user name module" fail; fi
+	sleep 1
+	grim "${run}/locked.png"
+	if ! cmp -s "${run}/unlocked.png" "${run}/locked.png"; then fCheck "the lock screen shows" ok; else fCheck "the lock screen shows" fail "screen unchanged"; fi
+	## A wrong password clears the box and puts up "Login failed". With the
+	## clock on the same minute, that message is all that changes.
+	(( 10#$(date +%S) < 50 )) || sleep 11
+	grim "${run}/locked.png"
+	fKeys text:notmypassword Return
+	sleep 4
+	grim "${run}/failed.png"
+	if ! cmp -s "${run}/locked.png" "${run}/failed.png" && fGtklock; then fCheck "a wrong password shows a message and stays locked" ok; else
+		fCheck "a wrong password shows a message and stays locked" fail
+	fi
+	## The idle lock or a suspend while already locked. A second gtklock
+	## can't lock, and lxqt-leave would wait on an error box.
+	mapfile -d '' sessionEnv < "/proc/$(pgrep -xu "${UID}" lxqt-session | head -n1)/environ"
+	if env -i "${sessionEnv[@]}" timeout 10 lxqt-leave --lockscreen > "${run}/relock.log" 2>&1 \
+		&& [[ "$(pgrep -cxu "${UID}" gtklock)" == 1 ]]; then
+		fCheck "locking again while locked is quiet" ok
+	else
+		fCheck "locking again while locked is quiet" fail "$(pgrep -cxu "${UID}" gtklock) gtklock running"
+	fi
+fi
+cp "${run}"/*.png "${SHOTS}/" 2>/dev/null || true
+
 fStopAll
 if ((failed)); then
 	## Services the bus starts log to the bus's own output.
@@ -202,3 +287,4 @@ fEcho "done"
 
 ##	History:
 ##		- 2026-10-14: Created.
+##		- 2026-10-15: Lock screen checks.
