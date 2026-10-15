@@ -85,6 +85,21 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261014: a "Test now" icon on screen off and the screensaver, and a test area for key repeat.
 		- 20261014: the tallest tab's last row was cut off when the window opened. Fixed.
 
+- The screen is locked, only shows a green circle, won't accept my password (and has no box for feedback), and I can't tell what user it thinks is logged in. (Critical, pre-next-cut.)
+	- ID: 2026101513313865
+	- Type: Bug
+	- Status: Queued
+	- Priority|Severity: Critical
+	- Opened: 20261015-133138
+	- Opened by: t00mietum
+	- Related IDs: 2026101412285001
+	- Test environment: this box, the stock LXQt session on Wayfire 0.9.0. The locker is swaylock 1.8.2, started by swayidle after 60 minutes idle. It was put in as a stopgap until the move to XFCE.
+	- Possible cause: swaylock with default options shows a blank screen. A ring shows only while typing: green as keys go in, blue while checking, red when wrong. There's no password box, no user name and no message, so a typo or a Caps Lock or layout problem looks the same as a hang.
+	- Progress log:
+		- 20261015: swaylock is running and holds both screens. Only one password try reached PAM, at 12:46, and it was rejected as a wrong password. The ZFS home unlock step after it never ran.
+		- 20261015: sending swaylock SIGUSR1 unlocks the screen, per its man page. Not tried yet.
+		- 20261015: the LXQtukz lock screen in the Settings item isn't done yet. It needs a password box, the user name, and a message on a failed try.
+
 - `cicd/paste.bash menu` passes without running either arm on Wayfire 0.11. Its IPC gives window geometry as floats, and the stage's arithmetic stops on them with exit 0.
 	- ID: 2026101422570842
 	- Type: Bug
