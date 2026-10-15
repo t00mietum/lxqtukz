@@ -80,7 +80,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Branch: pastefix
 	- Commit: c230370
 	- Test case: `cicd/paste.bash` menu stage for the QTerminal half. It fails on Debian's Wayfire 0.9 (`--system`), and with the option off. Its xwayland stage is the SilkTerm half, and fails today.
-	- Swept: the Wayfire option covers context-menu paste in every Qt app, not just QTerminal. Of the apps running on this box, only SilkTerm has an X11 clipboard connection.
+	- Swept: the Wayfire option covers context-menu paste in every Qt app, QTerminal included. Of the apps running on this box, only SilkTerm has an X11 clipboard connection.
 
 - Stop components from installing files outside the prefix. The build script lists them.
 	- ID: 2026101221490206
