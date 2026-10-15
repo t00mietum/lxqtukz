@@ -95,29 +95,6 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Related IDs: 2026101417551800
 	- Note: with the floats truncated, both arms ran against the release build: pasted nothing with the workaround off, and pasted with the release settings.
 
-- Make D-Bus started services use the prefix instead of `/usr`. That covers notifications, the portal and the polkit agent.
-	- ID: 2026101221490207
-	- Type: Bug
-	- Status: Queued
-	- Priority|Severity: Avg
-	- Opened: 20261012-214902
-	- Opened by: t00mietum
-	- Parent ID: 2026101221490200
-	- Note: session D-Bus service files may need `XDG_DATA_DIRS` set when the bus starts, or a patch.
-	- Related IDs: 2026101221490209
-	- Reproduced: Partly, 20261014. In the test container, the bus couldn't start our portal without the fix. That a bus systemd starts before login never looks in the prefix, and that Debian's xdg-desktop-portal runs with the systemd user environment, is from reading only.
-	- Actual cause: only the portal is D-Bus started. Notifications and the polkit agent are started by lxqt-session from the prefix's autostart entries, by name, with the prefix first in `PATH`, so they already use the prefix.
-	- Actual fix: `startlxqtukz` copies the prefix's D-Bus service files into the bus's runtime dir, which the bus reads on demand, and drops the systemd hand-off from them. It also gives the session's `XDG_DATA_DIRS` and desktop name to D-Bus and systemd, so xdg-desktop-portal finds our portal and its config. The release's `wayfire.ini` hands over the display right before lxqt-session starts, since lxqt-session starts the portal before it hands over its own environment. `xdg-desktop-portal` joined the release's dependency list.
-	- Progress log:
-		- 20261014: the new session check found the launcher stopped when `LANG` was unset. Fixed.
-		- 20261014: the same check found lxqt-session starts the portal before the display is known. The LXQt portal died, and xdg-desktop-portal left the file chooser out for the whole session.
-		- 20261015: failed on this box, with 0.1.0-alpha1 installed, in a session as a test user on the systemd user bus. The bus started Debian's `/usr/libexec/xdg-desktop-portal-lxqt`. The bus was up before the launcher wrote its service file, and it only looks again for a name it can't find. Debian's own file has the name, so ours was never read. After a `ReloadConfig` call on the bus, the prefix's portal started. The container has no Debian portal, which is why the check passed there.
-		- 20261015: next: have the launcher call `ReloadConfig` after writing the files, and give `cicd/session.bash` a Debian-style service file of the same name, so its check fails without the fix.
-	- Branch: prefixfix
-	- Commit: 83f953f, fdc2866
-	- Test case: `cicd/session.bash`, its D-Bus and portal checks.
-	- Verified: 20261014, `cicd/session.bash` passed its D-Bus and portal checks 3 times in a row, with and without a GPU. With the old launcher 3 of those checks fail, and with the old `session` line the portal check fails.
-
 - The backlight helper's polkit action is in the prefix, where polkit never reads it. Brightness keys may ask for an admin password.
 	- ID: 2026101421433387
 	- Type: Bug
@@ -356,6 +333,16 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
 
+- `cicd/build.bash <component>` fails when `work/` came from the repo's old location. The source trees are git worktrees that point at their mirror by absolute path.
+	- ID: 2026101509500812
+	- Type: Bug
+	- Status: Queued
+	- Priority|Severity: Low
+	- Opened: 20261015-095008
+	- Opened by: t00mietum
+	- Reproduced: Yes, 20261015. `cicd/build.bash lxqt-build-tools` stopped with "work tree has changes not in the queue", since git couldn't find the worktree under the old path.
+	- Note: `git worktree repair`, or relative worktree paths, would cover a moved repo.
+
 - With `AUTO_UPDATE=no`, installing deletes the updater timer's link in `/etc/systemd/system`, so turning auto update on later finds no timer.
 	- ID: 2026101509181633
 	- Type: Bug
@@ -387,6 +374,31 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Parent ID: 2026101221490200
 	- Reproduced: Yes, 20261014, in the session check's Wayfire log. The `[fisheye]` binding does nothing.
 	- Possible fix: build wayfire-plugins-extra as a component, or drop fisheye from the release's plugin list.
+
+- Make D-Bus started services use the prefix instead of `/usr`. That covers notifications, the portal and the polkit agent.
+	- ID: 2026101221490207
+	- Type: Bug
+	- Status: Done
+	- Priority|Severity: Avg
+	- Opened: 20261012-214902
+	- Opened by: t00mietum
+	- Parent ID: 2026101221490200
+	- Note: session D-Bus service files may need `XDG_DATA_DIRS` set when the bus starts, or a patch.
+	- Related IDs: 2026101221490209
+	- Reproduced: Partly, 20261014. In the test container, the bus couldn't start our portal without the fix. That a bus systemd starts before login never looks in the prefix, and that Debian's xdg-desktop-portal runs with the systemd user environment, is from reading only.
+	- Actual cause: only the portal is D-Bus started. Notifications and the polkit agent are started by lxqt-session from the prefix's autostart entries, by name, with the prefix first in `PATH`, so they already use the prefix.
+	- Actual fix: `startlxqtukz` copies the prefix's D-Bus service files into the bus's runtime dir, which the bus reads on demand, and drops the systemd hand-off from them. It also gives the session's `XDG_DATA_DIRS` and desktop name to D-Bus and systemd, so xdg-desktop-portal finds our portal and its config. The release's `wayfire.ini` hands over the display right before lxqt-session starts, since lxqt-session starts the portal before it hands over its own environment. `xdg-desktop-portal` joined the release's dependency list.
+	- Progress log:
+		- 20261014: the new session check found the launcher stopped when `LANG` was unset. Fixed.
+		- 20261014: the same check found lxqt-session starts the portal before the display is known. The LXQt portal died, and xdg-desktop-portal left the file chooser out for the whole session.
+		- 20261015: failed on this box, with 0.1.0-alpha1 installed, in a session as a test user on the systemd user bus. The bus started Debian's `/usr/libexec/xdg-desktop-portal-lxqt`. The bus was up before the launcher wrote its service file, and it only looks again for a name it can't find. Debian's own file has the name, so ours was never read. After a `ReloadConfig` call on the bus, the prefix's portal started. The container has no Debian portal, which is why the check passed there.
+		- 20261015: the launcher now asks the bus to reload after writing the files. `cicd/session.bash` starts its bus with a distro copy of the portal's service file in its data dirs, as Debian's LXQt has.
+	- Branch: prefixfix, dbusreload
+	- Commit: 83f953f, fdc2866
+	- Test case: `cicd/session.bash`, its D-Bus and portal checks, with the distro copy in place.
+	- Verified: 20261014, `cicd/session.bash` passed its D-Bus and portal checks 3 times in a row, with and without a GPU. With the old launcher 3 of those checks fail, and with the old `session` line the portal check fails.
+	- Verified: 20261015, `cicd/session.bash` with the distro copy fails both portal checks with the old launcher and passes with the new one. On this box, with the new launcher installed, a session as the test user on its systemd user bus started the portal from `/opt/lxqtukz`, and xdg-desktop-portal offered the file chooser.
+	- Closed: 20261015-095008
 
 - Stop components from installing files outside the prefix. The build script lists them.
 	- ID: 2026101221490206

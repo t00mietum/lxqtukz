@@ -115,7 +115,13 @@ mkdir -p "${busDir}"
 ## One left by an earlier login, and one that isn't ours.
 printf '%s\n' "# lxqtukz" "[D-BUS Service]" "Name=org.lxqtukz.Stale" "Exec=/bin/false" > "${busDir}/org.lxqtukz.Stale.service"
 printf '%s\n' "[D-BUS Service]" "Name=org.example.Other" "Exec=/bin/false" > "${busDir}/org.example.Other.service"
-dbus-daemon --session --nofork --print-address=3 3> "${run}/bus.address" > "${run}/bus.log" 2>&1 &
+## A distro's own copy of our portal, as Debian's LXQt has in /usr/share. The
+## bus reads it at start, and on its own never takes ours over it.
+distroDir="${run}/distro/dbus-1/services"
+mkdir -p "${distroDir}"
+printf '%s\n' "[D-BUS Service]" "Name=${PORTAL}" "Exec=/bin/false" > "${distroDir}/${PORTAL}.service"
+XDG_DATA_DIRS="${run}/distro:/usr/local/share:/usr/share" \
+	dbus-daemon --session --nofork --print-address=3 3> "${run}/bus.address" > "${run}/bus.log" 2>&1 &
 busPid=$!
 fWaitFor test -s "${run}/bus.address" || fDie "dbus-daemon did not start"
 export DBUS_SESSION_BUS_ADDRESS="$(head -n1 "${run}/bus.address")"
