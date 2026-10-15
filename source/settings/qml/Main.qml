@@ -27,6 +27,8 @@ ApplicationWindow {
 	property int popupsOpen: 0
 	property bool closing: false
 	property bool liveErrorShown: false
+	// Enter in the key repeat test area is a key to hold, not OK.
+	property bool tryingKeys: false
 
 	FontMetrics {
 		id: fm
@@ -117,7 +119,7 @@ ApplicationWindow {
 		return Math.ceil(w)
 	}
 
-	readonly property real panelWidth: labelColumn + controlColumn + lay.revert_width
+	readonly property real panelWidth: labelColumn + controlColumn + lay.test_width + lay.revert_width
 
 	// The tallest tab sets the window's natural height.
 	readonly property real panelHeight: {
@@ -189,11 +191,14 @@ ApplicationWindow {
 				errorBox.show(false)
 			}
 		}
+		function onTestFailed(why) {
+			errorBox.tell(qsTr("Test did not run"), why)
+		}
 	}
 
 	Shortcut {
 		sequences: ["Return", "Enter"]
-		enabled: win.popupsOpen === 0 && !errorBox.visible
+		enabled: win.popupsOpen === 0 && !errorBox.visible && !win.tryingKeys
 		onActivated: win.ok()
 	}
 	Shortcut {
@@ -222,11 +227,16 @@ ApplicationWindow {
 	Dialog {
 		id: errorBox
 		property bool closeAfter: false
+		property string message: ""
 		function show(then) {
 			closeAfter = then
+			tell(qsTr("Not saved"), backend.error)
+		}
+		function tell(heading, text) {
+			title = heading
+			message = text
 			open()
 		}
-		title: qsTr("Not saved")
 		modal: true
 		anchors.centerIn: parent
 		width: Math.min(parent.width - 2 * lay.pad, 480)
@@ -234,10 +244,11 @@ ApplicationWindow {
 		Label {
 			width: parent.width
 			wrapMode: Text.Wrap
-			text: backend.error
+			text: errorBox.message
 		}
 		onClosed: {
 			if (closeAfter) {
+				closeAfter = false
 				win.closing = true
 				win.close()
 			}
@@ -368,6 +379,8 @@ ApplicationWindow {
 			required property var modelData
 			readonly property var spec: modelData
 			readonly property bool isHeading: spec.kind === "heading"
+			// A field to try settings out in. It stores nothing.
+			readonly property bool isTryout: spec.kind === "tryout"
 			property string reason: ""
 			property bool atDefault: true
 
@@ -376,7 +389,7 @@ ApplicationWindow {
 			visible: height > 0
 
 			function refresh() {
-				if (isHeading)
+				if (isHeading || isTryout)
 					return
 				reason = backend.unavailable(spec.name)
 				atDefault = backend.isDefault(spec.name)
@@ -397,7 +410,7 @@ ApplicationWindow {
 				id: hover
 			}
 			ToolTip.text: tip
-			ToolTip.visible: tip !== "" && hover.hovered && win.active && win.popupsOpen === 0 && !revert.hovered
+			ToolTip.visible: tip !== "" && hover.hovered && win.active && win.popupsOpen === 0 && !revert.hovered && !testButton.hovered
 			ToolTip.delay: Application.styleHints.mousePressAndHoldInterval
 
 			// Heading: a title over a rule.
@@ -436,14 +449,33 @@ ApplicationWindow {
 				height: win.rowHeight
 				width: win.controlColumn
 				enabled: row.reason === ""
-				sourceComponent: ({ toggle: toggleControl, slider: sliderControl, dropdown: dropdownControl, text: textControl })[spec.kind] || null
+				sourceComponent: ({ toggle: toggleControl, slider: sliderControl, dropdown: dropdownControl, text: textControl, tryout: tryoutControl })[spec.kind] || null
 				onLoaded: item.sync()
 			}
 
 			ToolButton {
-				id: revert
-				visible: !row.isHeading
+				id: testButton
+				visible: spec.test !== ""
 				x: win.labelColumn + win.controlColumn
+				anchors.verticalCenter: control.verticalCenter
+				width: lay.test_width
+				focusPolicy: Qt.NoFocus
+				enabled: row.reason === "" && !backend.testing
+				contentItem: Label {
+					text: decl.icons.test
+					horizontalAlignment: Text.AlignHCenter
+					verticalAlignment: Text.AlignVCenter
+				}
+				onClicked: backend.testNow(spec.name)
+				ToolTip.text: spec.test_help
+				ToolTip.visible: hovered && win.active
+				ToolTip.delay: Application.styleHints.mousePressAndHoldInterval
+			}
+
+			ToolButton {
+				id: revert
+				visible: !row.isHeading && !row.isTryout
+				x: win.labelColumn + win.controlColumn + lay.test_width
 				anchors.verticalCenter: control.verticalCenter
 				width: lay.revert_width
 				focusPolicy: Qt.NoFocus
@@ -490,6 +522,18 @@ ApplicationWindow {
 					}
 					onEditingFinished: backend.setValue(spec.name, text)
 					onActiveFocusChanged: row.selectOnWalk(this)
+				}
+			}
+
+			Component {
+				id: tryoutControl
+				TextField {
+					anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+					width: lay.text_width
+					placeholderText: spec.help
+					function sync() {
+					}
+					onActiveFocusChanged: win.tryingKeys = activeFocus
 				}
 			}
 

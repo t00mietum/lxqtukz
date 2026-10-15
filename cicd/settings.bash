@@ -207,7 +207,7 @@ fCompositor_Start(){
 fIni_Reset(){
 	cat > "${ini}" <<-'EOF'
 		[core]
-		plugins = ipc stipc idle cube
+		plugins = ipc ipc-rules stipc idle cube
 
 		[output:HEADLESS-1]
 		mode = 1280x900
@@ -273,7 +273,8 @@ fTrace(){
 	[[ "${KEYS_TRACE:-0}" == 1 ]] || return 0
 	traceStep=$((traceStep + 1))
 	mkdir -p "${SHOTS}/trace"
-	grim "${SHOTS}/trace/$(printf '%03d' "${traceStep}")-$1.png"
+	## Nothing to capture while a test has the screen off.
+	grim "${SHOTS}/trace/$(printf '%03d' "${traceStep}")-$1.png" 2>/dev/null || true
 }
 
 ## Keys go in through Wayfire's stipc test plugin, which keeps one keyboard on
@@ -286,6 +287,29 @@ fKeys(){
 		name="${step,,}"
 		fTrace "${name//[^a-z0-9+]/}"
 	done
+}
+
+## The app window's x, y and width on screen.
+winX=0 winY=0 winW=0
+fWindow(){
+	read -r winX winY winW _ < <(python3 -I "${REPO_ROOT}/cicd/utility/wayfire-keys.py" --geometry)
+}
+
+## Clicks a row's "Test now" icon: two columns in from the window's right
+## edge, at the row's height on its tab.
+fTestNow(){ ## row-y
+	fWindow
+	fKeys "click:$((winX + winW - 73)),$((winY + $1))"
+}
+
+## The color of one screen pixel, as "r g b".
+fPixel(){ ## x y
+	grim -t ppm -g "$1,$2 1x1" - | tail -c 3 | od -An -tu1 | xargs
+}
+
+## Whether the screen can be captured, which it cannot while it is off.
+fScreenOn(){
+	grim -t ppm -g "0,0 1x1" - >/dev/null 2>&1
 }
 
 fStage_gui(){
@@ -345,7 +369,15 @@ fStage_keys(){
 
 	fIni_Reset
 	fApp_Start "Keyboard"
-	fKeys Tab Tab Tab Tab Tab text:de Return
+	fKeys Tab Tab Tab Tab Tab text:abc Return
+	kill -0 "${appPid}" 2>/dev/null || fDie "Enter in the key repeat test area closed the app"
+	fKeys Escape
+	fApp_Closed "Escape in the key repeat test area"
+	fEcho "Enter in the key repeat test area is a key, not OK"
+
+	fIni_Reset
+	fApp_Start "Keyboard"
+	fKeys Tab Tab Tab Tab Tab Tab text:de Return
 	fApp_Closed "Enter in a text field"
 	fIni_Has "xkb_layout = de" "Enter in a text field commits it and is OK"
 	fEcho "Enter in a text field is OK"
@@ -371,6 +403,38 @@ fStage_keys(){
 	if grep -q touchpad_accel_profile "${ini}"; then fDie "Escape left touchpad_accel_profile behind"; fi
 	fEcho "Right steps a dropdown, and Cancel drops an option that was not there"
 	fApp_LogClean "keyboard cases"
+
+	fSection "Test now"
+	fIni_Reset
+	fApp_Start "Screensaver and power"
+	fWindow
+	local calm; calm="$(fPixel $((winX + 10)) $((winY + 40)))"
+	fTestNow 165
+	fIni_Has "screensaver_timeout = 1" "the screensaver test cuts its timeout to a second"
+	sleep 3
+	fTrace screensaver
+	[[ "$(fPixel $((winX + 10)) $((winY + 40)))" != "${calm}" ]] || fDie "the screensaver test did not start the screensaver"
+	fKeys shift
+	sleep 1.5
+	if grep -q screensaver_timeout "${ini}"; then fDie "the screensaver test left its timeout behind"; fi
+	fEcho "the screensaver test starts it, and a key ends it and puts the timeout back"
+
+	fTestNow 165
+	fKeys Escape
+	fApp_Closed "Escape during the screensaver test"
+	if grep -q screensaver_timeout "${ini}"; then fDie "closing during the screensaver test left its timeout behind"; fi
+	fApp_Start "Screensaver and power"
+	fEcho "closing during the screensaver test puts the timeout back"
+
+	fTestNow 95
+	sleep 2.5
+	if fScreenOn; then fDie "the screen-off test left the screen on"; fi
+	fKeys shift
+	sleep 1
+	fScreenOn || fDie "a key did not turn the screen back on after the screen-off test"
+	fApp_Stop
+	fApp_LogClean "Test now"
+	fEcho "the screen-off test turns it off, and a key turns it back on"
 }
 
 for stage in "${stages[@]}"; do "fStage_${stage}"; done
@@ -382,3 +446,4 @@ fEcho "done: ${stages[*]}"
 ##		- 2026-10-14: Dogfood stage, and every stage by default.
 ##		- 2026-10-14: Dogfood to ~/.local/bin, and the session's Wayfire file in tests.
 ##		- 2026-10-14: A screenshot under a dark LXQt palette.
+##		- 2026-10-14: Test now cases, and the key repeat test area.

@@ -19,6 +19,7 @@ pub mod qobject {
 		#[qml_element]
 		#[qproperty(QString, error)]
 		#[qproperty(i32, revision)]
+		#[qproperty(bool, testing)]
 		type Backend = super::BackendRust;
 
 		/// The declarations, as JSON.
@@ -53,16 +54,30 @@ pub mod qobject {
 
 		#[qinvokable]
 		fn cancel(self: Pin<&mut Backend>) -> bool;
+
+		/// Starts the row's "Test now". It ends on its own, and says so by
+		/// `testing` going false.
+		#[qinvokable]
+		#[cxx_name = "testNow"]
+		fn test_now(self: Pin<&mut Backend>, name: &QString) -> bool;
+
+		#[qsignal]
+		#[cxx_name = "testFailed"]
+		fn test_failed(self: Pin<&mut Backend>, why: QString);
 	}
+
+	impl cxx_qt::Threading for Backend {}
 }
 
+use crate::idle::{self, Plan};
 use crate::settings::{Settings, Value};
-use crate::ui::{Key, Kind, ui};
+use crate::ui::{Key, Kind, Test, ui};
 use crate::wayfire::{SaveError, Wayfire, Xdg};
 use core::pin::Pin;
-use cxx_qt::CxxQtType;
+use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QString, QVariant};
 use std::sync::OnceLock;
+use std::time::Duration;
 
 static START_TAB: OnceLock<String> = OnceLock::new();
 
@@ -74,6 +89,14 @@ pub struct BackendRust {
 	settings: Settings,
 	error: QString,
 	revision: i32,
+	testing: bool,
+}
+
+// Closing during a test puts back what it held.
+impl Drop for BackendRust {
+	fn drop(&mut self) {
+		let _ = self.settings.put_back();
+	}
 }
 
 impl Default for BackendRust {
@@ -82,6 +105,7 @@ impl Default for BackendRust {
 			settings: Settings::new(ui(), Wayfire::open(&Xdg::from_env())),
 			error: QString::default(),
 			revision: 0,
+			testing: false,
 		}
 	}
 }
@@ -154,7 +178,7 @@ impl qobject::Backend {
 				.and_then(|i| values.get(i as usize))
 				.map(|v| Value::Text(v.clone())),
 			Kind::Text => value.value::<QString>().map(|s| Value::Text(s.to_string())),
-			Kind::Heading => None,
+			Kind::Heading | Kind::Tryout => None,
 		};
 		let Some(value) = value else {
 			return false;
@@ -173,6 +197,51 @@ impl qobject::Backend {
 
 	fn cancel(self: Pin<&mut Self>) -> bool {
 		self.finish(Settings::cancel)
+	}
+
+	fn test_now(mut self: Pin<&mut Self>, name: &QString) -> bool {
+		let key = key_of(name);
+		if key == Key::None || *self.testing() {
+			return false;
+		}
+		let Some(test) = ui().row(key).test else {
+			return false;
+		};
+		let plan = match test {
+			Test::ScreenOff => Plan {
+				blank: true,
+				rest: Duration::from_secs(1),
+				give_up: Duration::from_secs(10),
+			},
+			// Wayfire has no way to start it on demand, so its timeout is cut
+			// to a second. The rest is a bit longer, so the screensaver is up
+			// before the wait for a key or mouse move starts.
+			Test::Screensaver => {
+				if let Err(SaveError(why)) = self.as_mut().rust_mut().settings.hold(key, "1") {
+					self.as_mut().test_failed(QString::from(&why));
+					return false;
+				}
+				Plan {
+					blank: false,
+					rest: Duration::from_millis(1500),
+					give_up: Duration::from_secs(10),
+				}
+			}
+		};
+		self.as_mut().set_testing(true);
+		let thread = self.qt_thread();
+		idle::run(plan, move |result| {
+			let _ = thread.queue(move |backend| backend.test_ended(result));
+		});
+		true
+	}
+
+	fn test_ended(mut self: Pin<&mut Self>, result: Result<(), String>) {
+		let put_back = self.as_mut().rust_mut().settings.put_back();
+		self.as_mut().set_testing(false);
+		if let Err(why) = result.and(put_back.map_err(|SaveError(why)| why)) {
+			self.test_failed(QString::from(&why));
+		}
 	}
 
 	// Runs a change, then tells the QML side to read every row again, since

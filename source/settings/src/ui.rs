@@ -62,9 +62,18 @@ pub struct Tab {
 pub enum Kind {
 	Heading,
 	Toggle,
-	Slider { min: f64, max: f64, log: bool },
-	Dropdown { options: Vec<String>, values: Vec<String> },
+	Slider {
+		min: f64,
+		max: f64,
+		log: bool,
+	},
+	Dropdown {
+		options: Vec<String>,
+		values: Vec<String>,
+	},
 	Text,
+	/// A field to try a setting out in, such as key repeat. It stores nothing.
+	Tryout,
 }
 
 impl Kind {
@@ -75,7 +84,30 @@ impl Kind {
 			Kind::Slider { .. } => "slider",
 			Kind::Dropdown { .. } => "dropdown",
 			Kind::Text => "text",
+			Kind::Tryout => "tryout",
 		}
+	}
+}
+
+/// What a row's "Test now" does.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Test {
+	ScreenOff,
+	Screensaver,
+}
+
+impl Test {
+	pub fn name(self) -> &'static str {
+		match self {
+			Test::ScreenOff => "screen-off",
+			Test::Screensaver => "screensaver",
+		}
+	}
+
+	fn parse(text: &str) -> Option<Test> {
+		[Test::ScreenOff, Test::Screensaver]
+			.into_iter()
+			.find(|t| t.name() == text)
 	}
 }
 
@@ -98,6 +130,8 @@ pub struct Row {
 	/// For a row whose store has no default of its own to show.
 	pub default: Option<f64>,
 	pub plugins: Vec<String>,
+	pub test: Option<Test>,
+	pub test_help: String,
 }
 
 pub struct Ui {
@@ -200,7 +234,7 @@ fn parse(text: &str) -> Result<Ui, Vec<String>> {
 		let text = |field: &str| doc.get_string(&at(field)).unwrap_or_default();
 		let list = |field: &str| doc.get_string_array(&at(field)).unwrap_or_default();
 		let kind_text = text("kind");
-		let key = if kind_text == "heading" {
+		let key = if kind_text == "heading" || kind_text == "tryout" {
 			Key::None
 		} else {
 			let Some(key) = Key::parse(&name) else {
@@ -223,6 +257,7 @@ fn parse(text: &str) -> Result<Ui, Vec<String>> {
 			}
 			"toggle" => Kind::Toggle,
 			"text" => Kind::Text,
+			"tryout" => Kind::Tryout,
 			"slider" => {
 				let range = doc.get_float_array(&at("range")).unwrap_or_default();
 				if range.len() != 2 || range[0] >= range[1] {
@@ -263,6 +298,14 @@ fn parse(text: &str) -> Result<Ui, Vec<String>> {
 				"rows.{name}: setting {setting_text:?} is not wayfire:<section>/<option>"
 			));
 		}
+		let test_text = text("test");
+		let row_test = Test::parse(&test_text);
+		if !test_text.is_empty() && row_test.is_none() {
+			problems.push(format!("rows.{name}: no test named {test_text}"));
+		}
+		if row_test.is_some() && text("test_help").is_empty() {
+			problems.push(format!("rows.{name}: a test needs its test_help"));
+		}
 		rows.push(Row {
 			key,
 			kind,
@@ -274,6 +317,8 @@ fn parse(text: &str) -> Result<Ui, Vec<String>> {
 			setting,
 			default: doc.get_float(&at("default")).ok(),
 			plugins: list("plugins"),
+			test: row_test,
+			test_help: text("test_help"),
 		});
 	}
 
@@ -359,6 +404,10 @@ impl Ui {
 			quote(&mut out, &r.help);
 			out.push_str(",\"warning\":");
 			quote(&mut out, &r.warning);
+			out.push_str(",\"test\":");
+			quote(&mut out, r.test.map_or("", Test::name));
+			out.push_str(",\"test_help\":");
+			quote(&mut out, &r.test_help);
 			let _ = write!(out, ",\"tab\":{},\"indent\":{}", r.tab, r.indent);
 			match &r.kind {
 				Kind::Slider { min, max, log } => {
@@ -443,6 +492,7 @@ mod tests {
 			"label_width",
 			"label_gap",
 			"revert_width",
+			"test_width",
 			"control_width",
 			"value_width",
 			"text_width",
@@ -458,7 +508,7 @@ mod tests {
 		for name in ["cancel", "apply", "ok", "revert"] {
 			assert!(ui.help.iter().any(|(n, v)| n == name && !v.is_empty()), "help.{name}");
 		}
-		for name in ["revert", "warning"] {
+		for name in ["revert", "test", "warning"] {
 			assert!(ui.icons.iter().any(|(n, v)| n == name && !v.is_empty()), "icons.{name}");
 		}
 	}

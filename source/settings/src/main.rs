@@ -5,6 +5,7 @@
 
 mod application;
 mod bridge;
+mod idle;
 mod ini;
 mod settings;
 mod ui;
@@ -60,9 +61,11 @@ fn main() {
 	if let Some(engine) = engine.as_mut() {
 		engine.load(&QUrl::from("qrc:/qt/qml/org/lxqtukz/settings/qml/Main.qml"));
 	}
-	if let Some(app) = app.as_mut() {
-		std::process::exit(application::ffi::exec_application(app));
-	}
+	let code = app.as_mut().map_or(1, application::ffi::exec_application);
+	// The QML objects go first, so the backend can put back a value a test
+	// still holds.
+	drop(engine);
+	std::process::exit(code);
 }
 
 fn fail(message: &str) -> ! {

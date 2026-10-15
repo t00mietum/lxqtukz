@@ -19,9 +19,18 @@ static void schemeFromPalette(QApplication &app)
 		return;
 
 	const QPalette pal = app.palette();
-	const auto rgb = [&pal](QPalette::ColorRole role) {
+	// A scheme has no alpha, so a see-through color, such as the placeholder
+	// text, is mixed over the background it sits on.
+	const auto rgb = [&pal](QPalette::ColorRole role, QPalette::ColorRole over) {
 		const QColor c = pal.color(QPalette::Active, role);
-		return QStringLiteral("%1,%2,%3").arg(c.red()).arg(c.green()).arg(c.blue());
+		const QColor b = pal.color(QPalette::Active, over);
+		const auto mix = [&c](int front, int back) {
+			return (front * c.alpha() + back * (255 - c.alpha())) / 255;
+		};
+		return QStringLiteral("%1,%2,%3")
+			.arg(mix(c.red(), b.red()))
+			.arg(mix(c.green(), b.green()))
+			.arg(mix(c.blue(), b.blue()));
 	};
 	struct Set {
 		const char *name;
@@ -41,15 +50,15 @@ static void schemeFromPalette(QApplication &app)
 	QTextStream out(&file);
 	for (const Set &set : sets) {
 		out << "[Colors:" << set.name << "]\n"
-			<< "BackgroundNormal=" << rgb(set.back) << "\n"
-			<< "BackgroundAlternate=" << rgb(set.alternate) << "\n"
-			<< "ForegroundNormal=" << rgb(set.text) << "\n"
-			<< "ForegroundInactive=" << rgb(QPalette::PlaceholderText) << "\n"
-			<< "ForegroundActive=" << rgb(QPalette::Highlight) << "\n"
-			<< "ForegroundLink=" << rgb(QPalette::Link) << "\n"
-			<< "ForegroundVisited=" << rgb(QPalette::LinkVisited) << "\n"
-			<< "DecorationFocus=" << rgb(QPalette::Highlight) << "\n"
-			<< "DecorationHover=" << rgb(QPalette::Highlight) << "\n\n";
+			<< "BackgroundNormal=" << rgb(set.back, set.back) << "\n"
+			<< "BackgroundAlternate=" << rgb(set.alternate, set.back) << "\n"
+			<< "ForegroundNormal=" << rgb(set.text, set.back) << "\n"
+			<< "ForegroundInactive=" << rgb(QPalette::PlaceholderText, set.back) << "\n"
+			<< "ForegroundActive=" << rgb(QPalette::Highlight, set.back) << "\n"
+			<< "ForegroundLink=" << rgb(QPalette::Link, set.back) << "\n"
+			<< "ForegroundVisited=" << rgb(QPalette::LinkVisited, set.back) << "\n"
+			<< "DecorationFocus=" << rgb(QPalette::Highlight, set.back) << "\n"
+			<< "DecorationHover=" << rgb(QPalette::Highlight, set.back) << "\n\n";
 	}
 	out.flush();
 	file.flush();

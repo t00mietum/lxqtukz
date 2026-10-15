@@ -83,6 +83,8 @@ In each section, items are listed approximately from newest to oldest. A patch i
 	- Keyboard settings (delay, speed, shortcuts). Like XFCE4's, but integrated into the settings app.
 	- Mouse settings. Like XFCE4's, but integrated into the settings app.
 	- Progress 20261014: a first cut of all 3, through Wayfire's own settings. Screen off and Wayfire's cube screensaver with their timeouts, key repeat, layouts and Num Lock, and the mouse and touchpad. Still to do: a lock screen, power actions and keyboard shortcuts.
+	- Progress 20261014: labels were unreadable under a dark theme. Fixed.
+	- Progress 20261014: a "Test now" icon on screen off and the screensaver, and a test area for key repeat.
 
 - 🔘 List every config path in every component. Search all pinned sources for `QSettings(`, `XdgDirs::configHome`, `"lxqt"` and `.config/`. Mark each as covered by the liblxqt patch or needing its own.
 

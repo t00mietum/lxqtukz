@@ -45,6 +45,7 @@ layout:
 	indent: 18                 ## label step-in per sub-group level; controls stay put
 	label_width: 160           ## floor for the label column
 	label_gap: 16              ## clear space after the longest label
+	test_width: 28             ## the "Test now" column
 	revert_width: 28           ## the revert arrow's column
 
 	## Controls
@@ -65,6 +66,7 @@ help:
 	revert: "Put back the default."
 
 icons:
+	test: "▶"
 	revert: "↺"
 	warning: "⚠"
 
@@ -78,7 +80,8 @@ icons:
 ## A sub-group is a row followed by rows at a greater `indent:`. Their labels
 ## step right, and their controls stay in the one column.
 ##
-## kind:      heading | toggle | slider | dropdown | text
+## kind:      heading | toggle | slider | dropdown | text | tryout
+##            (tryout: a field to try settings out in, which stores nothing)
 ## label:     the row's name on screen; a unit goes on the end, as in "Delay, ms"
 ## setting:   where the value lives, "wayfire:<section>/<option>"
 ## range:     slider low, high, in the units shown
@@ -90,6 +93,8 @@ icons:
 ## indent:    sub-group depth of the label
 ## help:      flyover text, for a row whose label does not explain it
 ## warning:   a mark after the label, with this added to the flyover
+## test:      a "Test now" icon on the row: screen-off | screensaver
+## test_help: that icon's flyover text
 
 rows:
 
@@ -106,6 +111,8 @@ rows:
 		setting: "wayfire:idle/dpms_timeout"
 		plugins: [idle]
 		warning: "Some monitors ignore the request to turn off."
+		test: screen-off
+		test_help: "Test now: the screen goes off once the mouse and keyboard rest for a second. Any key or mouse move turns it back on."
 
 	ScreenOffAfter:
 		kind: slider
@@ -123,6 +130,8 @@ rows:
 		setting: "wayfire:idle/screensaver_timeout"
 		plugins: [idle, cube]
 		help: "Wayfire's spinning-cube screensaver."
+		test: screensaver
+		test_help: "Test now: the screensaver starts once the mouse and keyboard rest for a second. Any key or mouse move stops it."
 
 	ScreensaverAfter:
 		kind: slider
@@ -159,6 +168,11 @@ rows:
 		label: "Rate, per second"
 		range: [1, 100]
 		setting: "wayfire:input/kb_repeat_rate"
+
+	RepeatTest:
+		kind: tryout
+		label: Test area
+		help: "Hold a key down here."
 
 	Layout:
 		kind: heading
