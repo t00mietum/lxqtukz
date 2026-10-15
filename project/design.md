@@ -261,4 +261,4 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 
 - 2026-10-14: LXQt stays the base rather than COSMIC, for now. tukzedo plans its own settings app, file manager, terminal and desktop layer, and maybe a panel, which leaves the base supplying the compositor and session plumbing. Wayfire's plugins and lxqt-qtplugin's theming of other Qt apps suit the personalities better than cosmic-comp, which is built for COSMIC's own shell.
 
-- 2026-10-15: Wayfire's `focus_main_surface_instead_of_popup` workaround is on in the `wayfire.ini` that comes with each release. Without it, a Qt context menu's Paste pastes nothing that another app copied. It's a patch to upstream's file rather than our own copy, since LXQt upstream may want it too.
+- 2026-10-14: Wayfire's `focus_main_surface_instead_of_popup` workaround is on in the `wayfire.ini` that comes with each release. Without it, a Qt context menu's Paste pastes nothing that another app copied. It's a patch to upstream's file rather than our own copy, since LXQt upstream may want it too.
