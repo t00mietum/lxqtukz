@@ -15,8 +15,8 @@
 #	  Each step is followed by a short pause, so the app has taken it before
 #	  the next one comes.
 #	- Syntax: wayfire-keys.py --geometry
-#	  Prints the focused window's x, y, width and height. Needs the ipc-rules
-#	  plugin too.
+#	  Prints the focused window's x, y, width and height, as whole numbers.
+#	  Needs the ipc-rules plugin too.
 
 #	Copyright © 2026 t00mietum (CryptogID: ปʬϝღถɔ4რఠΔթะ9ƾǝu)
 #	Licensed under The MIT License (MIT). Full text at:
@@ -98,7 +98,9 @@ def main(steps):
 	sock.connect(path)
 	if steps == ["--geometry"]:
 		g = call(sock, "window-rules/get-focused-view", {})["info"]["geometry"]
-		print(g["x"], g["y"], g["width"], g["height"])
+		# Wayfire 0.11 sends floats, and bash arithmetic on "100.0" drops the
+		# whole stage without failing it.
+		print(*(round(g[k]) for k in ("x", "y", "width", "height")))
 		return
 	for step in steps:
 		if step.startswith("click:"):
