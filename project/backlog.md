@@ -103,6 +103,8 @@ In each section, items are listed approximately from newest to oldest. A patch i
 
 ### Milestone 4 - CI/CD and first release
 
+- 🔘 CI/CD dogfood: copy each build to its final install location on this box, not to a synced app folder, since this is the only test machine. The settings app already goes to `~/.local/bin`.
+
 - 🔘 Bring over the nemo-anywhere pipeline. `cicd.bash` stage engine, `config.bash` set up for `upstream.bash` and `build.bash`, pre-push merge gate, version-bump guard on the `version` file, `release.bash`, `changelog-notes.bash`, and backup and publish.
 	- Note: the pipeline and pre-push hook should run the content scrub only if it's present.
 
