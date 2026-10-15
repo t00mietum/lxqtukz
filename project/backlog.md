@@ -130,8 +130,7 @@ In each section, items are listed approximately from newest to oldest. A patch i
 
 #### Enhancements
 
-- 🔘 Settings app: sub-tabs that collapse when the tab list does not fit, a search bar, and the planned Appearance, Interface and Hardware tabs.
-	- Note: while the list fits, every sub-tab stays expanded and can't be collapsed. Hidden sub-tabs hurt discoverability.
+- 🔘 Settings app: a search bar, and the planned Appearance, Interface and Hardware tabs.
 	- Note: the full list is in the design doc, `design_docs/20260930-145721_settings-dialog.md`, under Specification and Roadmap.
 
 ### Misc to-do
