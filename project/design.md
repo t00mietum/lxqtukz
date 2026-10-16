@@ -68,7 +68,7 @@ It follows upstream releases for as long as the project lives. The patches may g
 
 - Where do tukzedo-linux's own defaults go? tukzedo could ship its own `/etc/xdg/lxqtukz/`, or this repo could keep them as a profile. Both work with the settings layers below.
 
-- Should the rest of the LXQt apps be built here, or left to the distro? Right now only the desktop core, the file manager and the terminal are pinned. The rest are lximage-qt, lxqt-archiver, screengrab and a few more.
+- Should the rest of the LXQt apps be built here, or left to the distro? Right now only the desktop core and the terminal are pinned. The rest are lximage-qt, lxqt-archiver, screengrab and a few more.
 
 - Release signing. Checksums are verified but nothing is signed yet. Probably minisign or sigstore on `sha256sums.txt`.
 
@@ -86,7 +86,7 @@ It follows upstream releases for as long as the project lives. The patches may g
 - `cicd/`: `upstream.bash` for tracking and patch queues, `build.bash` for the Debian build, `linux/Dockerfile` for the build container, and shared helpers in `utility/`, including `stage-prefix.bash`.
 	- `settings.bash` checks the settings app and runs it on a headless Wayfire, in the test container from `linux/Dockerfile.test`. Last, on the host, it copies the release build to `~/.local/bin/lxqtukz-settings`. Only the latest is kept.
 	- `paste.bash` checks copy and paste between apps on a headless Wayfire, using the release build's Wayfire and QTerminal, in the same container.
-	- `session.bash` starts the release build's session on a headless Wayfire with its own session bus, in the same container. It checks that the wallpaper, D-Bus started services and the portal come from the prefix, and that the lock key and the idle lock lock the screen with gtklock.
+	- `session.bash` starts the release build's session on a headless Wayfire with its own session bus, in the same container. It checks that the wallpaper, D-Bus started services and the portal come from the prefix, that nothing starts pcmanfm-qt and Super+P opens the default file manager, and that the lock key and the idle lock lock the screen with gtklock.
 
 - `nix/`: overlay, package and NixOS module. `flake.nix` is at the root.
 
@@ -137,7 +137,9 @@ LXQt 2.4 and Wayfire 0.11.0 are pinned. Build order is the order of lines in `co
 
 - wlroots 0.20 also needs newer wayland, wayland-protocols, libdrm, xkbcommon and pixman than Debian 13 has. They're pinned as components too, built into the prefix right before Wayfire, with `-` in the `nix` column so NixOS keeps nixpkgs' own. Programs that link them directly load ours through the rpath, and each is backward compatible with what Debian's Qt, cairo and Mesa were built against. xkbcommon still reads the system's keymaps.
 
-- pcmanfm-qt 2.4.1 wants layer-shell-qt 6.6, and Debian 13 has 6.3. A patch uses 6.3's API for the same thing.
+- pcmanfm-qt isn't built, so there's no file manager or desktop icons of our own. tukzdesk is the planned desktop and captain-nemo the planned file manager. Until then the desktop is the wallpaper swaybg draws, from Wayfire's `[autostart]`, and Super+P opens the home folder in the default file manager through `qtxdg-mat open`. libfm-qt is still built: lxqt-qtplugin's Qt file dialog and the portal's file chooser both use it.
+	- A distro's pcmanfm-qt still has its own autostart entry in `/etc/xdg/autostart`, and the session reads `/etc/xdg` first. So on a box with one, lxqt-session starts its desktop.
+	- lxqt-config's theme page starts `pcmanfm-qt --set-wallpaper` when "Override wallpaper" is checked. Without a pcmanfm-qt that does nothing.
 
 - lxqt-qtplugin and libqtxdg put their Qt plugins in the prefix, under `lib/qt6/plugins`, rather than in Qt's own plugin dir. The session adds that dir to `QT_PLUGIN_PATH`.
 
@@ -169,7 +171,7 @@ How it works:
 
 - A stock LXQt on the same machine keeps using `~/.config/lxqt/`.
 
-Some components keep settings outside `LXQt::Settings` and aren't covered yet: pcmanfm-qt, libfm-qt, qterminal, and anything with plain `QSettings` or its own paths. They're in the backlog.
+Some components keep settings outside `LXQt::Settings` and aren't covered yet: libfm-qt, qterminal, and anything with plain `QSettings` or its own paths. They're in the backlog.
 
 ## Session
 
@@ -298,3 +300,5 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 - 2026-10-15: fisheye is taken out of the release's Wayfire plugin list, rather than building wayfire-plugins-extra for it. A patch to upstream's `wayfire.ini` does it, like the paste and idle lock changes.
 
 - 2026-10-15: gtklock is the screen locker. It's packaged for both Debian 13 and NixOS, and it shows a password box, "Login failed" for a wrong password, and with its userinfo module the user name. It needs ext-session-lock-v1, which is Wayfire's session-lock plugin, in Wayfire 0.11.
+
+- 2026-10-15: pcmanfm-qt is out of the build, since tukzedo plans its own desktop (tukzdesk) and file manager (captain-nemo). Its patch for Debian's older layer-shell-qt went with it. libfm-qt stays, for the file dialogs.

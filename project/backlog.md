@@ -149,11 +149,27 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - Drop pcmanfm-qt from the build. Find what still needs libfm-qt, and what shows desktop icons until tukzdesk.
 	- ID: 2026101509181628
 	- Type: Task
-	- Status: Queued
+	- Status: Waiting for answers
+	- Needs local test suite run?: a full `cicd/build.bash` from clean, then `cicd/session.bash` on its release.
 	- Opened: 20261015-091816
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
+	- Related IDs: 2026101221490216
 	- Note: it also drops the pcmanfm-qt patch for the older layer-shell-qt.
+	- Progress log:
+		- 20261016: pcmanfm-qt is out of the build and its patch queue is gone. The Nix side reads the same pin list, so it's out there too.
+		- 20261016: libfm-qt stays. The Qt file dialog in lxqt-qtplugin and the portal's file chooser both use it. Nothing else that's built does.
+		- 20261016: the desktop until tukzdesk is the wallpaper from swaybg, with no icons. Super+P opened pcmanfm-qt, and now opens the home folder in whatever file manager is the default. With none installed, nothing opens.
+		- 20261016: question: a distro's pcmanfm-qt still starts its own desktop in the session, since its autostart entry in `/etc/xdg` is read first. Debian's LXQt on this box has one, so its desktop icons would show here. Should the session hide that entry, or leave the distro's desktop alone? Hiding it needs a session change, such as a patch to lxqt-session.
+		- 20261016: question: is Super+P opening the default file manager right, or should the key do nothing until captain-nemo?
+	- Decisions:
+		- No desktop icons until tukzdesk. The wallpaper stays with swaybg in Wayfire's `[autostart]`.
+		- The "Override wallpaper" box on lxqt-config's theme page starts pcmanfm-qt, so it does nothing now. Left until tukzdesk.
+	- Branch: nopcman
+	- Test case: `cicd/session.bash`, its "File manager and desktop" checks. On the release from before the change, 3 fail: the prefix and `wayfire.ini` name pcmanfm-qt, `pcmanfm-qt --desktop` runs, and Super+P doesn't open the default file manager. They pass on a release staged from this branch.
+	- Verified: 20261016, `cicd/session.bash` passed every check on a prefix staged from this branch with pcmanfm-qt's files taken out, which is what a clean build gives. Not a full build.
+	- Verified: 20261016, a distro-style `lxqt-desktop.desktop` in `/etc/xdg/autostart` in the test container starts its pcmanfm-qt in the session, and the new check catches it.
+	- Swept: every pcmanfm-qt and libfm-qt name in the repo and in the built prefix. Left alone, since nothing in the session runs them: lxqt-globalkeys' Ctrl+Alt+E (X11 only), lxqt-menu-data's entry for pcmanfm-qt's desktop settings (skipped when missing), lxqt-config's man page, and the other compositors' configs that lxqt-wayland-session installs.
 
 - Milestone 1 - First Debian build
 	- ID: 2026101221490200

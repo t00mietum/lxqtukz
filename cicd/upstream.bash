@@ -60,8 +60,8 @@ fMirror(){ echo "${MIRROR_DIR}/$1.git"; }
 fTree(){   echo "${SRC_DIR}/$1"; }
 
 ## Newest release-looking tag upstream, with the same prefix as the pin, such
-## as 'v' or 'libdrm-'. Pre-releases and odd tags (e.g. pcmanfm-qt's
-## 'split-libfm-qt') are left out on purpose. Empty when none match.
+## as 'v' or 'libdrm-'. Pre-releases and odd tags (e.g. xkbcommon's
+## '-beta1' tags, libdrm's 'X_4_0') are left out on purpose. Empty when none match.
 ## From the mirror when there is one, else asked of upstream.
 fNewestUpstreamTag(){
 	local prefix="${componentRef[$1]%%[0-9]*}" mirror="$(fMirror "$1")" tags
