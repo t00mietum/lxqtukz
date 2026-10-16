@@ -416,6 +416,9 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- Win98 SE and WFWG are rar archives. XP x64 is VMware, Win7 and Win2k are VirtualBox.
 		- macOS 26 Tahoe is the last release for Intel. A fresh install through OSX-KVM is likelier to work than upgrading the VirtualBox High Sierra image.
 		- Dataset `deb/persist/libvirt` uses lz4. Any compression stores zeroed blocks as nothing, so zstd at its default level 3 is mostly for the OS files.
+	- 20261016: b28l got a `br0` bridge like b23's, and the VM dataset is zstd now.
+	- 20261016: vm101f copied to b28l as-is, still on CPU passthrough. Disks match b23 byte for byte. Only the disk paths changed. It boots to the XP logon screen.
+		- Needs testing: log on. If XP asks to activate, the next try is a fixed CPU model on b23, then a fresh copy.
 
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
