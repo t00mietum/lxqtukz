@@ -419,6 +419,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- 20261016: b28l got a `br0` bridge like b23's, and the VM dataset is zstd now.
 	- 20261016: vm101f copied to b28l as-is, still on CPU passthrough. Disks match b23 byte for byte. Only the disk paths changed. It boots to the XP logon screen.
 		- Verified: logged on, and activation is still valid on b28l.
+		- Test login: `wintest`, a limited user with no password.
 
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
