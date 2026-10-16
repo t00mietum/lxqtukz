@@ -362,6 +362,44 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Note: try the Rust toolkit for captain-nemo and any panel against 2 very different personalities, such as Windows XP and macOS, before writing much of either.
 	- Note: the personalities item itself is in the tukzedo-linux backlog.
 
+- Pre-next-cut: Themes and icons avoid bitmapped assets (e.g. PNG) wherever possible.
+	- ID: 2026101609000001
+	- Type: Feature
+	- Status: Queued
+	- Opened: 20261016-090000
+	- Opened by: t00mietum
+	- Requirements:
+		- SVG is the way to go.
+			- We can re-render and repackage popular icon themes as SVG, like nemo-anywhere did for icon assets packed into the Windows executable.
+			- There may be rare exceptions allowed, such as very popular assets that can't really be rendered as SVG, like BuuF.
+		- Our included icons should give 100% coverage for all icon slots. For popular icon sets that don't, we fill in the blanks.
+
+- Pre-next-cut: Fonts to include.
+	- ID: 2026101609000002
+	- Type: Feature
+	- Status: Queued
+	- Opened: 20261016-090000
+	- Opened by: t00mietum
+	- Requirements:
+		- The most popular ones with high unicode coverage, as well as the font package that has very complete unicode and language coverage (noto?).
+		- The bitmapped unicode fonts that offer complete unicode coverage for fallback.
+		- Ubuntu.
+		- Microsoft fonts used for all versions of Windows and Office.
+		- macOS fonts.
+		- Fonts needed for specific personas.
+		- That very popular comprehensive font stack available on github.
+		- The monospace font stack listed by default in silkterm.
+
+- Pre-next-cut: Windows XP and Windows 2000 VMs, and other machines to compare Personas against.
+	- ID: 2026101609000003
+	- Type: Task
+	- Status: Queued
+	- Opened: 20261016-090000
+	- Opened by: t00mietum
+	- Note: I'll install a Windows XP and a Windows 2000 VM, each with test logins, so that when we get to work on "Personas", there is something to visually compare against.
+	- Note: Possibly also emulated machines of others, such as Amiga.
+	- Note: b26 is available to compare with macOS.
+
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
 	- Type: Task
