@@ -373,6 +373,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 			- We can re-render and repackage popular icon themes as SVG, like nemo-anywhere did for icon assets packed into the Windows executable.
 			- There may be rare exceptions allowed, such as very popular assets that can't really be rendered as SVG, like BuuF.
 		- Our included icons should give 100% coverage for all icon slots. For popular icon sets that don't, we fill in the blanks.
+			- Clarification: We won't include only icon sets with 100% coverage - that may not exist. Instead, we'll fill in the gaps ourselves, artistically (rather than by copying fallbacks from other sets).
 
 - Pre-next-cut: Fonts to include.
 	- ID: 2026101609000002
@@ -399,6 +400,22 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Note: I'll install a Windows XP and a Windows 2000 VM, each with test logins, so that when we get to work on "Personas", there is something to visually compare against.
 	- Note: Possibly also emulated machines of others, such as Amiga.
 	- Note: b26 is available to compare with macOS.
+	- Requirements:
+		- Copy from b23, the VM 'vm101f', exactly. You can't change any IDs or settings, or else Windows Activation will trigger. And actually, it appears that CPU settings are passed through, which will probably trigger an activation when host changes. Maybe we should first adjust the settings of b23's copy, to be totally opaque so that it can run on any host without triggering activation. If that's the case, I'll just have to reactivate it on b23. Then copy verbatim to b28l.
+			- Alternately, I have a 64-bit version of Windows XP, that might be more amenable to virtualization? (If there are virtio drivers for it.) It's on b23 at '/mnt/bfs/bf7/0-0/common/exec/vm/archive/win; 090; Windows XP Pro x64; vm280; vmware/win; 090; Windows XP Pro x64; vm280; vmware; 20090717'.
+			- There's a Windows 7 VM: '/mnt/bfs/bf7/0-0/common/exec/vm/archive/win; 110; Windows 7; vm551; virtualbox'
+			- Windows 2000: '/mnt/bfs/bf7/0-0/common/exec/vm/live/virtualbox/win; 080; Win2kPro-Quake2 [vm514c]'
+			- Windows 98 SE: '/mnt/bfs/bf7/0-0/common/exec/vm/archive/win; 040; Windows 98 SE; vm151b; vmware' (but it should look and work like Windows 2000).
+			- WFWG 3.11: '/mnt/bfs/bf7/0-0/common/exec/vm/archive/win; 020; WFWG 311; vm150b; vmware'
+			- Hackintosh: '/mnt/bfs/bf7/0-0/common/exec/vm/archive/macOS; High Sierra; virtualbox'. I wonder if it can be upgraded to the most recent version that will run on Intel (which I think is "only" a year old).
+		- The ZFS dataset for VMs should have high compression settings. Not so high to kill this weak CPU, but high enough for good OS and zero'd disk space compression.
+	- 20261016: vm101f is XP Pro 32-bit, on an AMD Ryzen host. b28l is Intel, so CPU passthrough would show Windows a different vendor and model.
+		- XP's activation counts the network card heavily and the CPU lightly. The MAC is fixed in the VM's config, so the CPU change alone may not trigger it. A fixed CPU model makes it safe on any host.
+		- Its disks are 2 VDI files, 36 GB and 2.7 GB, 25 GB on disk. b23 has QEMU 11.0 and b28l 10.0. Its machine type exists on both.
+		- It uses bridge `br0`, which b28l lacks. Pointing it at the `default` network keeps the MAC and card model.
+		- Win98 SE and WFWG are rar archives. XP x64 is VMware, Win7 and Win2k are VirtualBox.
+		- macOS 26 Tahoe is the last release for Intel. A fresh install through OSX-KVM is likelier to work than upgrading the VirtualBox High Sierra image.
+		- Dataset `deb/persist/libvirt` uses lz4. Any compression stores zeroed blocks as nothing, so zstd at its default level 3 is mostly for the OS files.
 
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
