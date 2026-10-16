@@ -260,12 +260,19 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - CI/CD dogfood: copy each build to its final install location on this box, not to a synced app folder, since this is the only test machine. The settings app already goes to `~/.local/bin`.
 	- ID: 2026101418583700
 	- Type: Task
-	- Status: Queued
+	- Status: Waiting for testing
+	- Needs local test suite run?: A real `cicd/build.bash dogfood` on this box. It needs sudo, and the full build takes a while.
 	- Progress log:
 		- 20261015: done by hand once. LXQtukz reinstalled in `/opt/lxqtukz` from the 14:24 build, and `cicd/settings.bash dogfood` put the settings app in `~/.local/bin`. The pipeline step itself is still to do.
+		- 20261015: `cicd/build.bash dogfood` does a full build, then installs it with `install.bash -y --from`. The same version as the installed one gets `lxqtukz-update --uninstall -y` first. Any other version installs over it. It skips the reinstall while a session runs that version. The settings app stays with `cicd/settings.bash dogfood`.
 	- Opened: 20261014-185837
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490203
+	- Decisions:
+		- Off unless named, since it needs sudo. Refused with a component list or `--here`, since only a full build writes a release, and `--here` builds straight into `/opt/lxqtukz`.
+	- Verified: 20261015, `cicd/tooling.bash dogfood` passes, with sudo, docker, the installer and the updater stubbed. It checks the command order for not installed, same version, other version, same version in use, and no `lxqtukz-update` on PATH. Also no install after a failed build, and the refusals. With the uninstall line taken out, the same-version check fails.
+	- Test case: `cicd/tooling.bash dogfood`.
+	- Branch: cicdbits
 
 - Bring over the nemo-anywhere pipeline. `cicd.bash` stage engine, `config.bash` set up for `upstream.bash` and `build.bash`, pre-push merge gate, version-bump guard on the `version` file, `release.bash`, `changelog-notes.bash`, and backup and publish.
 	- ID: 2026101221490220
@@ -364,9 +371,17 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - `cicd/upstream.bash`: `status --fetch` to update mirrors before comparing, and a 1-line summary for the merge gate.
 	- ID: 2026101221490230
 	- Type: Enhancement
-	- Status: Queued
+	- Status: Waiting on signoff
 	- Opened: 20261012-214902
 	- Opened by: t00mietum
+	- Progress log:
+		- 20261015: `status` reads the newest tag from the mirror, so it's offline and as new as the last fetch. With no mirror it still asks upstream. `--fetch` fetches first. A summary line ends the table, and `--summary` prints only that line. The gate itself is 2026101221490220.
+	- Decisions:
+		- The summary is informational: `status` still exits 0 when components are behind or a work tree changed. The gate decides what fails.
+	- Verified: 20261015, on the real mirrors with no fetch, the table matches the old script's line for line, through libxkbcommon and the rest. `cicd/tooling.bash upstream` passes on local mirrors: a new upstream tag shows only after `--fetch`, prefixed tags and pre-releases, "?" for a component with no matching tag, the no-mirror fallback, and `--fetch` refused for other subcommands. It fails on the old script, with `--fetch` ignored, and with the tag prefix dropped as before 2026101513523151.
+	- Test case: `cicd/tooling.bash upstream`.
+	- Related IDs: 2026101513523151, 2026101221490220
+	- Branch: cicdbits
 
 - lxqt-wayland-session: `lxqt-wayfire.ini` hardcodes `/usr/share/lxqt/...`. Send upstream a change that installs it with the configured paths.
 	- ID: 2026101221490231

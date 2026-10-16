@@ -55,3 +55,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Settings app checks and keyboard tests on a headless Wayfire (`cicd/settings.bash`).
 
 - Installer checks in a Debian 13 container (`cicd/installer.bash`).
+
+- `cicd/build.bash dogfood`: a full build, then installed on the box it was built on.
+
+- `cicd/upstream.bash status --fetch` and `--summary`.
+
+- Checks for the cicd scripts themselves (`cicd/tooling.bash`).

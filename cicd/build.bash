@@ -16,10 +16,14 @@
 ##	    lxqtukz-<version>-<target>.tar.gz      one top-level dir, '<version>/'
 ##	    lxqtukz-<version>-<target>-deps.txt    Debian packages it needs at run time
 ##	    lxqtukz-<version>-sha256sums.txt
-##	- Syntax: cicd/build.bash [--here] [--jobs N] [component...]
+##	- Syntax: cicd/build.bash [--here] [--jobs N] [component...] [dogfood]
 ##	    component...  build only these (into the prefix of the last full build, kept
 ##	                  in work/prefix/); default all, from clean.
 ##	                  'settings' is our settings app, source/settings/.
+##	    dogfood       after a full build, installs its release on this box with
+##	                  install.bash --from. The same version as the one installed
+##	                  is uninstalled first, since the installer skips a version
+##	                  it is already on. Needs sudo, so it only runs when named.
 ##	History: At bottom of script.
 
 ##	Copyright © 2026 t00mietum (CryptogID: ปʬϝღถɔ4რఠΔթะ9ƾǝu)
@@ -58,6 +62,18 @@ while (($#)); do case "$1" in
 	*) only+=("$1"); shift ;;
 esac; done
 
+## Dogfood is a step on the host, not something to build.
+declare -i dogfood=0
+names=()
+for name in "${only[@]+"${only[@]}"}"; do
+	if [[ "${name}" == dogfood ]]; then dogfood=1; else names+=("${name}"); fi
+done
+only=("${names[@]+"${names[@]}"}")
+if ((dogfood)); then
+	((! ${#only[@]})) || fDie "dogfood needs a full build; partial builds write no release"
+	((! here)) || fDie "dogfood runs on the host after the container build, so not with --here"
+fi
+
 ## The settings app is built from this repo, so it is picked out of the list
 ## before the rest is matched against components.conf.
 declare -i withSettings=0
@@ -73,6 +89,35 @@ fCommit(){
 	commit="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
 	[[ -z "$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null || true)" ]] || commit="${commit}-dirty"
 	echo "${commit}"
+}
+
+DOGFOOD_ROOT="/opt/lxqtukz"
+
+## Installs this build's release on this box. The installer says "already on"
+## and does nothing for the version that is active, so that one is removed
+## first. Any other version installs over it, and stays a rollback away.
+fStage_dogfood(){
+	fSection "Dogfood"
+	local tarball="${ARTIFACTS}/lxqtukz-${VERSION}-${TARGET}.tar.gz" active="" uninstaller
+	[[ -f "${tarball}" ]] || fDie "no release at ${tarball}"
+	[[ ! -L "${DOGFOOD_ROOT}/current" ]] || active="$(basename "$(readlink "${DOGFOOD_ROOT}/current")")"
+	fEcho_Clean "installed: ${active:-none}, built: ${VERSION}"
+	if [[ "${active}" == "${VERSION}" ]]; then
+		## Uninstall takes the dir out from under a session still running it.
+		if sudo sh -c "grep -qs '${DOGFOOD_ROOT}/versions/${VERSION}/' /proc/[0-9]*/maps"; then
+			fEcho "skipped: a running session uses ${VERSION}; log out of it and run the dogfood stage again"
+			return 0
+		fi
+		uninstaller="$(command -v lxqtukz-update || true)"
+		if [[ -z "${uninstaller}" ]]; then
+			fEcho "lxqtukz-update isn't on PATH; uninstalling with this repo's install.bash"
+			"${REPO_ROOT}/install.bash" --uninstall -y
+		else
+			"${uninstaller}" --uninstall -y
+		fi
+	fi
+	sudo "${REPO_ROOT}/install.bash" -y --from "${tarball}"
+	fEcho "installed: ${DOGFOOD_ROOT}/versions/${VERSION}"
 }
 
 
@@ -95,11 +140,15 @@ if ((! here)); then
 	mkdir -p "${REPO_ROOT}/work/prefix/${TARGET}"
 	## Git in the container refuses the repo, which isn't root's, and in a
 	## worktree its .git points outside the mount. So the commit is read here.
-	exec docker run --rm -i \
-		-v "${REPO_ROOT}:/src" -w /src \
-		-v "${REPO_ROOT}/work/prefix/${TARGET}:$(dirname "${PREFIX}")" \
-		-e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e LXQTUKZ_COMMIT="$(fCommit)" \
-		"${IMAGE}" /src/cicd/build.bash --here --jobs "${jobs}" "${only[@]+"${only[@]}"}"
+	inContainer=(docker run --rm -i
+		-v "${REPO_ROOT}:/src" -w /src
+		-v "${REPO_ROOT}/work/prefix/${TARGET}:$(dirname "${PREFIX}")"
+		-e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e LXQTUKZ_COMMIT="$(fCommit)"
+		"${IMAGE}" /src/cicd/build.bash --here --jobs "${jobs}" "${only[@]+"${only[@]}"}")
+	((dogfood)) || exec "${inContainer[@]}"
+	"${inContainer[@]}"
+	fStage_dogfood
+	exit 0
 fi
 
 
@@ -247,3 +296,4 @@ ls -l "${ARTIFACTS}" | sed 's/^/  /'
 ##		- 2026-10-14: Builds the settings app.
 ##		- 2026-10-14: Prefix kept in work/prefix/, so a partial build can stage.
 ##		- 2026-10-15: The host reads the commit for the manifest.
+##		- 2026-10-15: dogfood stage.
