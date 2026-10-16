@@ -166,6 +166,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- No desktop icons until tukzdesk. The wallpaper stays with swaybg in Wayfire's `[autostart]`.
 		- The "Override wallpaper" box on lxqt-config's theme page starts pcmanfm-qt, so it does nothing now. Left until tukzdesk.
 	- Branch: nopcman
+	- Commit: 91d78e3
 	- Test case: `cicd/session.bash`, its "File manager and desktop" checks. On the release from before the change, 3 fail: the prefix and `wayfire.ini` name pcmanfm-qt, `pcmanfm-qt --desktop` runs, and Super+P doesn't open the default file manager. They pass on a release staged from this branch.
 	- Verified: 20261016, `cicd/session.bash` passed every check on a prefix staged from this branch with pcmanfm-qt's files taken out, which is what a clean build gives. Not a full build.
 	- Verified: 20261016, a distro-style `lxqt-desktop.desktop` in `/etc/xdg/autostart` in the test container starts its pcmanfm-qt in the session, and the new check catches it.
