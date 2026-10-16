@@ -126,13 +126,25 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - The backlight helper's polkit action is in the prefix, where polkit never reads it. Brightness keys may ask for an admin password.
 	- ID: 2026101421433387
 	- Type: Bug
-	- Status: Queued
+	- Status: Waiting for testing
+	- Needs local test suite run?: A full `cicd/build.bash` from clean, then `cicd/installer.bash` and `cicd/session.bash` on the release it makes.
+	- Needs external testing: A real login on this box after the next install. Brightness keys and the brightness settings change the backlight with no password prompt, and Debian's own LXQt session still does too.
 	- Priority|Severity: Avg
 	- Opened: 20261014-214333
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
 	- Related IDs: 2026101221490206
 	- Note: polkit only reads `/usr/share/polkit-1/actions`, so the installer would link it there. Its action id is the same as Debian's liblxqt one, so it needs its own file name and id first. Unverified that the password prompt happens.
+	- Reproduced: Yes, 20261015, on Debian 13's polkit 126. pkexec on our helper finds no action for it and falls back to polkit's generic one, which asks for an admin password. With our action linked under its upstream id, Debian's helper got the generic one instead, since polkit keeps only one action per id.
+	- Actual cause: polkit reads actions only from its own dirs, never the prefix. And linked as it was, our action would replace a distro LXQt's, since both have the same id.
+	- Actual fix: the release renames the action to `org.lxqtukz.backlight-<version>`, in a file of the same name. The installer links every installed version's action into `/usr/share/polkit-1/actions`, so a session still on an older version keeps working after an update. Prune and uninstall remove the links, and a file that isn't our link is never replaced. NixOS needs nothing new: the module puts the package in the system packages, and polkit reads actions from there.
+	- Note: polkit 126 also reads `/usr/local/share/polkit-1/actions`, but missed links made there while that dir was new. So the links go in `/usr/share`.
+	- Branch: relfixes
+	- Commit: bd44d52
+	- Test case: `cicd/installer.bash`, its polkit checks. They fail with the installer and release from before the fix: no link, and pkexec falls back to the generic action. They pass after. A release with the upstream id fails 4 of them, and linking every action without the name check fails 2.
+	- Verified: 20261015, `cicd/installer.bash` passed on a release staged from this branch. pkexec picks our action for the helper the session runs, and an active session needs no password for it. Debian's helper keeps its own action. A session on an older version keeps its action after an update. Prune and uninstall leave no link behind.
+	- Verified: 20261015, the NixOS module evaluates with polkit on and the system packages' `share/polkit-1` linked. nixpkgs' liblxqt runs the helper by its full path, which matches the action. Not built.
+	- Swept: the action is the only polkit file in the prefix. The installer's other links into system dirs go away on uninstall too, and `cicd/installer.bash` checks that no link into `/opt/lxqtukz` is left anywhere.
 
 - Drop pcmanfm-qt from the build. Find what still needs libfm-qt, and what shows desktop icons until tukzdesk.
 	- ID: 2026101509181628
@@ -366,34 +378,63 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 - With `AUTO_UPDATE=no`, installing deletes the updater timer's link in `/etc/systemd/system`, so turning auto update on later finds no timer.
 	- ID: 2026101509181633
 	- Type: Bug
-	- Status: Queued
+	- Status: Waiting for testing
+	- Needs external testing: The next install on this box, which has `AUTO_UPDATE=no`. Both unit links stay, and `systemctl enable --now lxqtukz-update.timer` works afterward.
 	- Priority|Severity: Low
 	- Opened: 20261015-091816
 	- Opened by: t00mietum
 	- Reproduced: Yes, 20261015, installing 0.1.0-alpha1 on this box. The service's link is there, the timer's isn't.
 	- Possible cause: `systemctl disable` on a linked unit removes the link itself.
+	- Actual cause: confirmed. `systemctl disable` removes a linked unit's own link along with its enable links, and the installer disabled the timer right after linking it.
+	- Actual fix: with `AUTO_UPDATE=no`, the installer disables the timer first and links both units after.
+	- Branch: relfixes
+	- Commit: bd44d52
+	- Test case: `cicd/installer.bash`, its timer checks. They fail with the old installer: the timer's link is gone, and enabling it says the unit doesn't exist. They pass after.
+	- Verified: 20261015, `cicd/installer.bash`, with unit links made offline: both units stay linked through installs and an update with `AUTO_UPDATE=no`, the timer can be enabled afterward, and the next install turns it off again. Not tried against a running systemd.
+	- Swept: the only other `systemctl disable` is in `--uninstall`, which removes both links anyway.
 
 - Release manifests say the commit is `unknown`. Inside the build container, git refuses the repo, since it belongs to another user.
 	- ID: 2026101421433386
 	- Type: Bug
-	- Status: Queued
+	- Status: Done
 	- Priority|Severity: Low
 	- Opened: 20261014-214333
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
 	- Reproduced: Yes, 20261014. `git rev-parse HEAD` as root in the build image, on the mounted repo, exits 128 with "dubious ownership".
 	- Possible cause: `cicd/build.bash` asks git for the commit inside the container. The host side could pass it in.
+	- Actual cause: confirmed. Also, in a worktree the repo's `.git` points outside what the container sees.
+	- Actual fix: `cicd/build.bash` reads the commit on the host and passes it into the container. `--here` still asks git itself.
+	- Branch: relfixes
+	- Commit: bd44d52
+	- Test case: `cicd/session.bash`, "the manifest names the commit". It fails on the release built before the fix, which says `unknown`, and passes after.
+	- Verified: 20261015, a partial build from this branch wrote the branch's commit into the manifest, with `-dirty` for the uncommitted tree. `cicd/session.bash` passed the check on a release staged from it.
+	- Swept: `cicd/build.bash` is the only place a Debian manifest gets its commit. The Nix build takes it from the flake.
+	- Acceptance signoff: Self-closed: intent clear, and the test fails before the fix and passes after.
+	- Closed: 20261015-170651
 
 - Wayfire logs that it can't load its fisheye plugin. Upstream's `lxqt-wayfire.ini` turns it on, but fisheye is in wayfire-plugins-extra, which isn't built.
 	- ID: 2026101421433388
 	- Type: Bug
-	- Status: Queued
+	- Status: Done
 	- Priority|Severity: Low
 	- Opened: 20261014-214333
 	- Opened by: t00mietum
 	- Parent ID: 2026101221490200
 	- Reproduced: Yes, 20261014, in the session check's Wayfire log. The `[fisheye]` binding does nothing.
 	- Possible fix: build wayfire-plugins-extra as a component, or drop fisheye from the release's plugin list.
+	- Decisions:
+		- 20261015: fisheye is dropped from the release's plugin list, rather than building wayfire-plugins-extra. It's a patch to upstream's `wayfire.ini`, like the paste fix and the idle lock.
+	- Actual cause: upstream's `lxqt-wayfire.ini` lists fisheye, which is in wayfire-plugins-extra, and that isn't built.
+	- Actual fix: a third lxqt-wayland-session patch takes fisheye out of the plugin list, with its `[fisheye]` binding. Staging a release now fails if any plugin in that list isn't in the prefix.
+	- Branch: relfixes
+	- Commit: bd44d52
+	- Test case: the plugin check in `cicd/utility/stage-prefix.bash`, and "Wayfire loads every plugin in its list" in `cicd/session.bash`. Both fail without the patch, naming fisheye, and pass with it.
+	- Verified: 20261015, a partial build of lxqt-wayland-session stopped at staging without the patch and passed with it. `cicd/session.bash` passed every check on a release staged from this branch.
+	- Swept: the new check walks the whole plugin list, and every other plugin in it is in the prefix. The settings app has no fisheye row.
+	- Note: a user's own `wayfire.ini`, copied at first login, still lists fisheye.
+	- Acceptance signoff: Self-closed: follows the 20261015 decision, and the tests fail before the fix and pass after.
+	- Closed: 20261015-170651
 
 - `cicd/paste.bash menu` passes without running either arm on Wayfire 0.11. Its IPC gives window geometry as floats, and the stage's arithmetic stops on them with exit 0.
 	- ID: 2026101422570842
