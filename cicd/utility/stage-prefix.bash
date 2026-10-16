@@ -58,6 +58,20 @@ for entry in "${src}"/share/applications/*.desktop; do
 	fPlace 0644 "${entry}" "${prefix}/share/applications/$(basename "${entry}")"
 done
 
+## liblxqt's backlight action has the same file name and id as a distro
+## LXQt's, so linked in beside it, one would hide the other. Each version
+## gets its own, since each names its own helper path.
+actions="${prefix}/share/polkit-1/actions"
+upstreamAction="${actions}/org.lxqt.backlight.pkexec.policy"
+ourAction="org.lxqtukz.backlight-${version}"
+if [[ -e "${upstreamAction}" ]]; then
+	grep -q 'id="org.lxqt.backlight.pkexec"' "${upstreamAction}" || fDie "${upstreamAction} has no org.lxqt.backlight.pkexec action"
+	sed "s|id=\"org.lxqt.backlight.pkexec\"|id=\"${ourAction}\"|" "${upstreamAction}" > "${actions}/.${ourAction}.policy"
+	rm -f "${upstreamAction}" "${actions}/${ourAction}.policy"
+	mv "${actions}/.${ourAction}.policy" "${actions}/${ourAction}.policy"
+fi
+[[ -f "${actions}/${ourAction}.policy" ]] || fDie "missing ${actions}/${ourAction}.policy; was liblxqt built?"
+
 sessionFile="${prefix}/share/wayland-sessions/lxqtukz.desktop"
 mkdir -p "$(dirname "${sessionFile}")"; rm -f "${sessionFile}"
 sed "s|@EXEC_PREFIX@|${execPrefix}|g" "${src}/share/wayland-sessions/lxqtukz.desktop" > "${sessionFile}"
@@ -97,6 +111,17 @@ while read -r used; do
 	[[ -z "${used}" || -e "${prefix}/${used}" ]] || fDie "wayfire.ini uses ${used}, which is not in the prefix"
 done < <(grep -oE '\$\{LXQTUKZ_PREFIX\}/[^[:space:]"'\'']+' <<< "${wayfireActive}" | sed 's|^\${LXQTUKZ_PREFIX}/||' || true)
 cp -RL --no-preserve=mode "${src}/etc/xdg/lxqtukz/." "${vendor}/"
+## Wayfire only logs a plugin it can't load, and that plugin's bindings do
+## nothing. So every plugin listed has to be in the prefix.
+plugins="$(awk '
+	/^\[/ { core = ($0 == "[core]"); next }
+	core && !more && /^plugins[[:space:]]*=/ { sub(/^[^=]*=/, ""); more = 1 }
+	more { line = $0; cont = sub(/\\[[:space:]]*$/, "", line); out = out " " line; if (!cont) exit }
+	END { print out }' "${vendor}/wayfire.ini")"
+[[ -n "${plugins// /}" ]] || fDie "wayfire.ini has no [core] plugins list"
+for plugin in ${plugins}; do
+	[[ -f "${prefix}/lib/wayfire/lib${plugin}.so" ]] || fDie "wayfire.ini loads the ${plugin} plugin, which the prefix doesn't have"
+done
 
 fGeneral_Set(){ ## file key value
 	if grep -q "^$2[[:space:]]*=" "$1"; then
@@ -140,3 +165,5 @@ fEcho "staged ${prefix} (${version}, ${target})"
 ##		- 2026-10-12: Created.
 ##		- 2026-10-14: wayfire.ini paths under /usr point at the prefix.
 ##		- 2026-10-15: gtklock is the screen locker.
+##		- 2026-10-15: The backlight action gets its own name per version;
+##		  every plugin wayfire.ini lists must be in the prefix.

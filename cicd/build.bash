@@ -68,6 +68,14 @@ done
 ((${#only[@]})) || withSettings=1
 
 
+fCommit(){
+	local commit
+	commit="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
+	[[ -z "$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null || true)" ]] || commit="${commit}-dirty"
+	echo "${commit}"
+}
+
+
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 # Outside: hand off to the container
 
@@ -85,10 +93,12 @@ if ((! here)); then
 	## The prefix lives in the tree, so a partial build has the rest of it to
 	## install over and stage.
 	mkdir -p "${REPO_ROOT}/work/prefix/${TARGET}"
+	## Git in the container refuses the repo, which isn't root's, and in a
+	## worktree its .git points outside the mount. So the commit is read here.
 	exec docker run --rm -i \
 		-v "${REPO_ROOT}:/src" -w /src \
 		-v "${REPO_ROOT}/work/prefix/${TARGET}:$(dirname "${PREFIX}")" \
-		-e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+		-e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" -e LXQTUKZ_COMMIT="$(fCommit)" \
 		"${IMAGE}" /src/cicd/build.bash --here --jobs "${jobs}" "${only[@]+"${only[@]}"}"
 fi
 
@@ -194,9 +204,7 @@ if ((! stageable)); then
 	exit 0
 fi
 
-commit="$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
-[[ -z "$(git -C "${REPO_ROOT}" status --porcelain 2>/dev/null)" ]] || commit="${commit}-dirty"
-"${REPO_ROOT}/cicd/utility/stage-prefix.bash" "${PREFIX}" "/opt/lxqtukz/current" "${VERSION}" "${commit}" "${TARGET}"
+"${REPO_ROOT}/cicd/utility/stage-prefix.bash" "${PREFIX}" "/opt/lxqtukz/current" "${VERSION}" "${LXQTUKZ_COMMIT:-$(fCommit)}" "${TARGET}"
 
 ## Partial builds are for iterating; only a full build makes release assets.
 ((${#only[@]} == 0)) || { fEcho "partial build; no release assets written"; exit 0; }
@@ -238,3 +246,4 @@ ls -l "${ARTIFACTS}" | sed 's/^/  /'
 ##		- 2026-10-12: Created.
 ##		- 2026-10-14: Builds the settings app.
 ##		- 2026-10-14: Prefix kept in work/prefix/, so a partial build can stage.
+##		- 2026-10-15: The host reads the commit for the manifest.

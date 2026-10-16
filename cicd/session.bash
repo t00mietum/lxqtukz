@@ -11,6 +11,8 @@
 ##	    - xdg-desktop-portal finding our portal and its config
 ##	    - the lock key and the idle lock: gtklock locks the session, with the
 ##	      user name module, and shows "Login failed" for a wrong password
+##	- And that the manifest names the commit, and Wayfire loads every plugin
+##	  in its list.
 ##	- The release comes from cicd/artifacts/release/, extracted to the path it
 ##	  was built for.
 ##	- Syntax: cicd/session.bash [--here]
@@ -151,6 +153,14 @@ if fWaitFor fSessionUp; then fEcho "lxqt-session and lxqt-panel are running"; el
 fi
 sleep 2
 
+fSection "Release"
+commitLine="$(grep -m1 '^LXQTUKZ_COMMIT=' "${PREFIX}/share/lxqtukz/manifest" || true)"
+fEcho "${commitLine:-no LXQTUKZ_COMMIT line}"
+if [[ "${commitLine}" =~ ^LXQTUKZ_COMMIT=[0-9a-f]{40}(-dirty)?$ ]]; then fCheck "the manifest names the commit" ok; else fCheck "the manifest names the commit" fail; fi
+## Wayfire logs a plugin it can't load and goes on without it.
+unloaded="$(grep -o 'Failed to load plugin "[^"]*"' "${run}/session.log" | sort -u | tr '\n' ' ' || true)"
+if [[ -z "${unloaded}" ]]; then fCheck "Wayfire loads every plugin in its list" ok; else fCheck "Wayfire loads every plugin in its list" fail "${unloaded% }"; fi
+
 fSection "Wallpaper"
 userIni="${HOME}/.config/lxqtukz/wayfire.ini"
 splash="$(grep -m1 '^splash[[:space:]]*=' "${userIni}" || true)"
@@ -288,3 +298,4 @@ fEcho "done"
 ##	History:
 ##		- 2026-10-14: Created.
 ##		- 2026-10-15: Lock screen checks.
+##		- 2026-10-15: Manifest commit and plugin checks.

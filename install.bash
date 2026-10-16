@@ -42,6 +42,7 @@ ROOT="/opt/lxqtukz"
 STATE_DIR="/var/lib/lxqtukz"
 HISTORY_FILE="${STATE_DIR}/history"
 SYS_CONF_DIR="/etc/xdg/lxqtukz"
+POLKIT_DIR="/usr/share/polkit-1/actions"
 
 
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
@@ -283,16 +284,48 @@ fIntegrate(){
 		${SUDO} cp "${cur}/etc/xdg/lxqtukz/update.conf" "${SYS_CONF_DIR}/update.conf"
 	fi
 	if command -v systemctl >/dev/null && [[ -d /run/systemd/system ]]; then
+		## disable also removes a linked unit's own link, which would leave
+		## nothing to enable later. So it goes before the links are made.
+		if [[ "$(fConf AUTO_UPDATE yes)" == "no" ]]; then
+			${SUDO} systemctl disable --now lxqtukz-update.timer >/dev/null 2>&1 || true
+		fi
 		for unit in lxqtukz-update.service lxqtukz-update.timer; do
 			${SUDO} ln -sfn "${cur}/lib/systemd/system/${unit}" "/etc/systemd/system/${unit}"
 		done
 		${SUDO} systemctl daemon-reload
-		if [[ "$(fConf AUTO_UPDATE yes)" == "no" ]]; then
-			${SUDO} systemctl disable --now lxqtukz-update.timer >/dev/null 2>&1 || true
-		else
+		if [[ "$(fConf AUTO_UPDATE yes)" != "no" ]]; then
 			${SUDO} systemctl enable --now lxqtukz-update.timer >/dev/null 2>&1
 		fi
 	fi
+	fPolkitLink
+}
+
+## polkit reads actions from its own dirs only. polkitd misses links in one
+## made after it started, such as /usr/local's, so they go in the one it
+## always has. Each version's action names that version's backlight
+## helper, and a session keeps the version it logged in with, so every
+## installed version gets a link. Builds from before the rename have the
+## distro's own file name, which is never linked.
+fPolkitLink(){
+	local file dest
+	${SUDO} mkdir -p "${POLKIT_DIR}"
+	for file in "${ROOT}"/versions/*/share/polkit-1/actions/org.lxqtukz.*.policy; do
+		dest="${POLKIT_DIR}/${file##*/}"
+		[[ -f "${file}" && ( -L "${dest}" || ! -e "${dest}" ) ]] || continue
+		${SUDO} ln -sfn "${file}" "${dest}"
+	done
+	fPolkitUnlink stale
+}
+
+## Our links in POLKIT_DIR: all of them, or with 'stale' those whose version is gone.
+fPolkitUnlink(){ ## [stale]
+	local link
+	for link in "${POLKIT_DIR}"/*.policy; do
+		[[ -L "${link}" && "$(readlink "${link}")" == "${ROOT}/"* ]] || continue
+		[[ "${1:-}" == stale && -e "${link}" ]] && continue
+		${SUDO} rm -f "${link}"
+	done
+	return 0
 }
 
 ## Keeps KEEP versions, newest first, and always keeps the active one, the
@@ -315,12 +348,12 @@ fPrune(){
 fDebianSwitch(){ ## version reason
 	fFetchVersion "$1"
 	fActivate "$1" "$2"
-	fIntegrate
 	fPrune
+	fIntegrate
 }
 
 fDebianUninstall(){
-	fEcho_Clean "This removes ${ROOT}, the session entry, the updater and its timer."
+	fEcho_Clean "This removes ${ROOT}, the session entry, the updater and its timer, and the backlight helper's polkit action."
 	fEcho_Clean "Kept: ${SYS_CONF_DIR}/, every user's ~/.config/lxqtukz/, and packages apt installed."
 	fConfirm
 	if command -v systemctl >/dev/null && [[ -d /run/systemd/system ]]; then
@@ -329,6 +362,7 @@ fDebianUninstall(){
 		${SUDO} systemctl daemon-reload
 	fi
 	${SUDO} rm -f /usr/share/wayland-sessions/lxqtukz.desktop /usr/local/bin/lxqtukz-update
+	fPolkitUnlink
 	${SUDO} rm -rf "${ROOT}" "${STATE_DIR}"
 	fEcho "LXQtukz removed"
 }
@@ -429,3 +463,5 @@ esac
 
 ##	History:
 ##		- 2026-10-12: Created.
+##		- 2026-10-15: Links the backlight helper's polkit action; AUTO_UPDATE=no
+##		  keeps the timer's unit link.

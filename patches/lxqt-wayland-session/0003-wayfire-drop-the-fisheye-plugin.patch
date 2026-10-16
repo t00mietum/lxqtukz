@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: t00mietum <73576036+t00mietum@users.noreply.github.com>
+Date: Thu, 15 Oct 2026 16:51:57 -0700
+Subject: [PATCH] wayfire: drop the fisheye plugin
+
+fisheye comes from wayfire-plugins-extra, which isn't part of a plain
+Wayfire install. Wayfire logs that it can't load it at every start, and
+its Super+Ctrl+F binding does nothing. Take it out of the plugin list,
+along with its section.
+---
+ configurations/lxqt-wayfire.ini | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/configurations/lxqt-wayfire.ini b/configurations/lxqt-wayfire.ini
+index c252c984413bbad0afa5d5cd3b7607e653fb8893..46193e28e2adcb99fce262a9783530a7879768ea 100644
+--- a/configurations/lxqt-wayfire.ini
++++ b/configurations/lxqt-wayfire.ini
+@@ -56,7 +56,6 @@ plugins = \
+   decoration \
+   expo \
+   fast-switcher \
+-  fisheye \
+   foreign-toplevel \
+   grid \
+   gtk-shell \
+@@ -123,10 +122,6 @@ modifier = <super> <alt>
+ [wrot]
+ activate = <super> <ctrl> BTN_RIGHT
+ 
+-# Fisheye effect.
+-[fisheye]
+-toggle = <super> <ctrl> KEY_F
+-
+ # Startup commands ─────────────────────────────────────────────────────────────
+ 
+ [autostart]
