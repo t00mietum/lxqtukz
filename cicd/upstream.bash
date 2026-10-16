@@ -7,7 +7,11 @@
 ##	  (patches/<component>/). This turns the pair into a working tree, turns a
 ##	  working tree back into a queue, and moves a pin by rebasing the queue.
 ##	- Subcommands:
-##	    status  [component...]       pin, queue size, newest upstream release, tree state
+##	    status  [component...]       pin, queue size, newest upstream release, tree state,
+##	                                 then a 1-line summary. Newest release is read from
+##	                                 the mirrors, so it is only as new as the last fetch.
+##	      --fetch                    fetch the mirrors first
+##	      --summary                  only the summary line, for the merge gate
 ##	    fetch   [component...]       clone or update the local upstream mirrors
 ##	    apply   [component...]       recreate work/src/<component>: the pin plus the queue
 ##	    refresh  component...        write work/src/<component> commits back into the queue
@@ -58,10 +62,15 @@ fTree(){   echo "${SRC_DIR}/$1"; }
 ## Newest release-looking tag upstream, with the same prefix as the pin, such
 ## as 'v' or 'libdrm-'. Pre-releases and odd tags (e.g. pcmanfm-qt's
 ## 'split-libfm-qt') are left out on purpose. Empty when none match.
+## From the mirror when there is one, else asked of upstream.
 fNewestUpstreamTag(){
-	local prefix="${componentRef[$1]%%[0-9]*}"
-	git ls-remote --tags --refs "${componentUrl[$1]}" 2>/dev/null \
-		| sed 's|.*refs/tags/||' | grep -E "^${prefix//./\\.}[0-9]+(\.[0-9]+)+$" | sort -V | tail -1 || true
+	local prefix="${componentRef[$1]%%[0-9]*}" mirror="$(fMirror "$1")" tags
+	if [[ -d "${mirror}" ]]; then
+		tags="$(git -C "${mirror}" for-each-ref --format='%(refname:strip=2)' refs/tags 2>/dev/null || true)"
+	else
+		tags="$(git ls-remote --tags --refs "${componentUrl[$1]}" 2>/dev/null | sed 's|.*refs/tags/||' || true)"
+	fi
+	grep -E "^${prefix//./\\.}[0-9]+(\.[0-9]+)+$" <<<"${tags}" | sort -V | tail -1 || true
 }
 
 ## Same flags as refresh, so a tree and its queue compare byte for byte.
@@ -166,19 +175,38 @@ fRefresh(){
 }
 
 fStatus(){
-	local name newest state count
+	local name newest state count line
 	local -i rc
-	printf "%-24s %-18s %-18s %-6s %s\n" "component" "pinned" "upstream" "queue" "work tree"
+	local -a behind=() unknown=() changed=() noTree=()
+	((summaryOnly)) || printf "%-24s %-18s %-18s %-6s %s\n" "component" "pinned" "upstream" "queue" "work tree"
 	for name in "$@"; do
 		newest="$(fNewestUpstreamTag "${name}")"
 		count="$(fComponents_Patches "${name}" | grep -c . || true)"
 		rc=0; fTreeMatchesQueue "${name}" || rc=$?
-		case ${rc} in 0) state="clean" ;; 1) state="CHANGED - refresh or --force apply" ;; *) state="-" ;; esac
-		[[ "${newest}" == "${componentRef[${name}]}" ]] || newest="${newest:-?} *"
-		printf "%-24s %-18s %-18s %-6s %s\n" "${name}" "${componentRef[${name}]}" "${newest}" "${count}" "${state}"
+		case ${rc} in
+			0) state="clean" ;;
+			1) state="CHANGED - refresh or --force apply"; changed+=("${name}") ;;
+			*) state="-"; noTree+=("${name}") ;;
+		esac
+		if [[ -z "${newest}" ]]; then
+			unknown+=("${name}"); newest="? *"
+		elif [[ "${newest}" != "${componentRef[${name}]}" ]]; then
+			behind+=("${name}"); newest="${newest} *"
+		fi
+		((summaryOnly)) || printf "%-24s %-18s %-18s %-6s %s\n" "${name}" "${componentRef[${name}]}" "${newest}" "${count}" "${state}"
 	done
-	fEcho_Clean ""
-	fEcho_Clean "* = newer upstream release than the pin; 'bump <component> <tag>' moves to it."
+	if ((! summaryOnly)); then
+		fEcho_Clean ""
+		fEcho_Clean "* = newer upstream release than the pin; 'bump <component> <tag>' moves to it."
+		fEcho_Clean ""
+	fi
+	line="upstream: $# components, ${#behind[@]} behind upstream"
+	((! ${#behind[@]})) || line+=" (${behind[*]})"
+	((! ${#unknown[@]})) || line+=", ${#unknown[@]} with no release tag found (${unknown[*]})"
+	line+=", ${#changed[@]} work tree(s) changed"
+	((! ${#changed[@]})) || line+=" (${changed[*]})"
+	((! ${#noTree[@]})) || line+=", ${#noTree[@]} not applied"
+	echo "${line}"
 }
 
 ## Rewrites one row of components.conf, keeping comments and column layout.
@@ -259,10 +287,12 @@ fHelp(){ sed -n '/^##\t- Purpose/,/^##\tHistory/p' "${BASH_SOURCE[0]}" | sed 's/
 #••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••
 # Main
 
-declare -i force=0
+declare -i force=0 fetchFirst=0 summaryOnly=0
 args=()
 for arg in "$@"; do case "${arg}" in
 	--force) force=1 ;;
+	--fetch) fetchFirst=1 ;;
+	--summary) summaryOnly=1 ;;
 	-h|--help) fHelp; exit 0 ;;
 	*) args+=("${arg}") ;;
 esac; done
@@ -272,9 +302,14 @@ set -- "${args[@]+"${args[@]}"}"
 subcommand="$1"; shift
 fComponents_Load
 fTrees_Repair
+[[ "${subcommand}" == status ]] || ((! fetchFirst && ! summaryOnly)) || fDie "--fetch and --summary are for status only"
 
 case "${subcommand}" in
-	status)  fComponents_Select "$@"; fStatus  "${selectedComponents[@]}" ;;
+	status)  fComponents_Select "$@"
+	         if ((fetchFirst)); then
+	             if ((summaryOnly)); then fFetch "${selectedComponents[@]}" >/dev/null; else fFetch "${selectedComponents[@]}"; fi
+	         fi
+	         fStatus "${selectedComponents[@]}" ;;
 	fetch)   fComponents_Select "$@"; fFetch   "${selectedComponents[@]}" ;;
 	apply)   fComponents_Select "$@"; fApply   "${selectedComponents[@]}" ;;
 	refresh) (($#)) || fDie "refresh needs component names (it rewrites the queue)"
@@ -289,3 +324,4 @@ esac
 ##		- 2026-10-12: Created.
 ##		- 2026-10-15: Work trees left behind by a moved repo are repaired.
 ##		- 2026-10-15: status matches tags with the pin's prefix, and no longer stops on a component with none.
+##		- 2026-10-15: status reads the mirrors, with --fetch to update them first, and ends on a summary line.

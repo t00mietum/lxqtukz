@@ -117,6 +117,7 @@ The last one was chosen. The queue is in this repo, so one commit can change a p
 Everything goes through `cicd/upstream.bash`.
 
 - `status`: the pin, how many patches, the newest upstream release, adn whether the work tree has changes not exported yet.
+	- The newest release comes from the mirror, so it's as new as the last fetch. `--fetch` fetches first, and `--summary` prints only the closing 1-line summary, for the merge gate.
 
 - `apply [component...]`: makes a bare mirror in `work/mirror/` and a work tree in `work/src/<component>` on branch `lxqtukz` at the pinned commit, then applies the queue with `git am`. It refuses to throw away a tree with commits that aren't in the queue yet.
 

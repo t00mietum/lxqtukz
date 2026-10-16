@@ -148,8 +148,10 @@ cicd/upstream.bash status        # pins, patch counts, newer upstream releases
 cicd/upstream.bash apply liblxqt # upstream source plus our patches, in work/src/liblxqt
 cicd/build.bash                  # full Debian 13 build in a container
 cicd/build.bash wayfire          # rebuild one component into the last full build
+cicd/build.bash dogfood          # full build, then install it in /opt/lxqtukz on this box (sudo)
 cicd/session.bash                # start the built session on a headless Wayfire, and check it
 cicd/settings.bash               # settings app: lints, tests, a run on a headless Wayfire, then a copy in ~/.local/bin
+cicd/tooling.bash                # checks for the cicd scripts themselves, with stubs
 ~~~
 
 Changing upstream code, moving to a new upstream release, and the release process are in [project/design.md](project/design.md). Conventions for contributors are in [contributing.md](contributing.md).
