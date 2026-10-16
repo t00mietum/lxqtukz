@@ -420,6 +420,8 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- 20261016: vm101f copied to b28l as-is, still on CPU passthrough. Disks match b23 byte for byte. Only the disk paths changed. It boots to the XP logon screen.
 		- Verified: logged on, and activation is still valid on b28l.
 		- Test login: `wintest`, a limited user with no password.
+	- 20261016: Win2k (vm514c) copied to b28l, disk hash matches b23. New config: 1 CPU, 3 GB, IDE disk, same e1000 MAC on `br0`, Cirrus video. It boots straight to the desktop at 640x480, with the Found New Hardware wizard up.
+		- Next: let the wizard install the Cirrus and other drivers, and remove the old VirtualBox guest additions.
 
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
