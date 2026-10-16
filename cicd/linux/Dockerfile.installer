@@ -1,0 +1,13 @@
+##	Installer test box: a bare Debian 13 with polkit and systemctl, and a
+##	distro LXQt's backlight action and helper, so cicd/installer.bash can
+##	check that ours sits beside them. liblxqt2 is unpacked, not installed,
+##	to skip its Qt deps.
+
+FROM debian:trixie
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	polkitd pkexec dbus systemd liblxqt-backlight-helper \
+	&& cd /tmp && apt-get download liblxqt2 && dpkg-deb -x liblxqt2_*.deb /tmp/liblxqt2 \
+	&& cp /tmp/liblxqt2/usr/share/polkit-1/actions/org.lxqt.backlight.pkexec.policy /usr/share/polkit-1/actions/ \
+	&& rm -rf /tmp/liblxqt2 /tmp/liblxqt2_*.deb /var/lib/apt/lists/*

@@ -40,6 +40,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `lxqtukz-settings`, a settings app, with screen power and screensaver, keyboard, and mouse and touchpad tabs. Debian build only for now.
 
+### Changed
+
+- Wayfire's fisheye plugin is out of the release's plugin list. It's in wayfire-plugins-extra, which isn't built.
+
+- The backlight helper's polkit action has its own name per version, and the installer links it where polkit reads it.
+
 ### Other work
 
 - Upstream tracking and patch-queue tooling (`cicd/upstream.bash`).
@@ -47,3 +53,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Debian 13 container build (`cicd/build.bash`).
 
 - Settings app checks and keyboard tests on a headless Wayfire (`cicd/settings.bash`).
+
+- Installer checks in a Debian 13 container (`cicd/installer.bash`).

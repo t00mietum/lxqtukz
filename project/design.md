@@ -140,9 +140,9 @@ LXQt 2.4 and Wayfire 0.11.0 are pinned. Build order is the order of lines in `co
 
 - lxqt-qtplugin and libqtxdg put their Qt plugins in the prefix, under `lib/qt6/plugins`, rather than in Qt's own plugin dir. The session adds that dir to `QT_PLUGIN_PATH`.
 
-- liblxqt's polkit action for the backlight helper goes in the prefix too, under `share/polkit-1/actions`. polkitd only reads `/usr/share/polkit-1/actions`, so it has no effect until the installer links it there. That's in the backlog.
+- liblxqt's polkit action for the backlight helper goes in the prefix too, under `share/polkit-1/actions`. polkit never looks there, so the installer links it into `/usr/share/polkit-1/actions`. Its file name and id are the same as a distro LXQt's, and polkit keeps only one action per id, so the release renames it to `org.lxqtukz.backlight-<version>`. Each version's action names that version's helper, which is the one pkexec finds first on the session's `PATH`.
 
-- `lxqt-wayland-session` is built for its Wayfire defaults (`lxqt-wayfire.ini`) and helper scripts. Its launcher is replaced by ours.
+- `lxqt-wayland-session` is built for its Wayfire defaults (`lxqt-wayfire.ini`) and helper scripts. Its launcher is replaced by ours. The build checks that every plugin in that file's list is in the prefix.
 
 - wf-shell, labwc and the other compositors aren't built. LXQt's panel is the shell.
 
@@ -207,6 +207,8 @@ Some components keep settings outside `LXQt::Settings` and aren't covered yet: p
 - `/opt/lxqtukz/current` is a symlink to `versions/<version>`, and picks the active one. A switch makes the new link under a temp name with `ln -sfn`, then moves it into place with `mv -T`, so the switch is atomic.
 
 - Integration points are symlinks through `current`, so a switch never has to touch them. They are `/usr/share/wayland-sessions/lxqtukz.desktop`, `/usr/local/bin/lxqtukz-update` and `/etc/systemd/system/lxqtukz-update.{service,timer}`.
+	- The backlight helper's polkit actions are the exception. Every installed version gets its own link in `/usr/share/polkit-1/actions`, since a session runs the version it logged in with. Prune and uninstall remove them.
+	- With `AUTO_UPDATE=no` the timer is disabled before its unit is linked. `systemctl disable` also removes a linked unit's own link.
 
 - Qt, KF6 and system libraries come from Debian. Each release has a dependency list made at build time from the binaries' `NEEDED` entries, mapped to packages with `dpkg -S`. The installer apt-installs whatever is missing.
 
@@ -291,5 +293,7 @@ Same model as nemo-anywhere. GitHub is for git hosting and release downloads, an
 - 2026-10-14: D-Bus services from the prefix go through the bus's runtime dir rather than a system-wide `session.d` config. It needs no root, and other users and other desktops don't see our services, unless another desktop shares the bus with a running LXQtukz session.
 
 - 2026-10-14: Wayfire's `focus_main_surface_instead_of_popup` workaround is on in the `wayfire.ini` that comes with each release. Without it, a Qt context menu's Paste pastes nothing that another app copied. It's a patch to upstream's file rather than our own copy, since LXQt upstream may want it too.
+
+- 2026-10-15: fisheye is taken out of the release's Wayfire plugin list, rather than building wayfire-plugins-extra for it. A patch to upstream's `wayfire.ini` does it, like the paste and idle lock changes.
 
 - 2026-10-15: gtklock is the screen locker. It's packaged for both Debian 13 and NixOS, and it shows a password box, "Login failed" for a wrong password, and with its userinfo module the user name. It needs ext-session-lock-v1, which is Wayfire's session-lock plugin, in Wayfire 0.11.
