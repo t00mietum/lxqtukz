@@ -162,9 +162,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- 20261016: the desktop until tukzdesk is the wallpaper from swaybg, with no icons. Super+P opened pcmanfm-qt, and now opens the home folder in whatever file manager is the default. With none installed, nothing opens.
 		- 20261016: question: a distro's pcmanfm-qt still starts its own desktop in the session, since its autostart entry in `/etc/xdg` is read first. Debian's LXQt on this box has one, so its desktop icons would show here. Should the session hide that entry, or leave the distro's desktop alone? Hiding it needs a session change, such as a patch to lxqt-session.
 		- 20261016: question: is Super+P opening the default file manager right, or should the key do nothing until captain-nemo?
-	- Decisions:
-		- No desktop icons until tukzdesk. The wallpaper stays with swaybg in Wayfire's `[autostart]`.
-		- The "Override wallpaper" box on lxqt-config's theme page starts pcmanfm-qt, so it does nothing now. Left until tukzdesk.
+		- 20261016: the "Override wallpaper" box on lxqt-config's theme page starts pcmanfm-qt, so it does nothing now. Left as is until tukzdesk.
 	- Branch: nopcman
 	- Commit: 91d78e3
 	- Test case: `cicd/session.bash`, its "File manager and desktop" checks. On the release from before the change, 3 fail: the prefix and `wayfire.ini` name pcmanfm-qt, `pcmanfm-qt --desktop` runs, and Super+P doesn't open the default file manager. They pass on a release staged from this branch.
