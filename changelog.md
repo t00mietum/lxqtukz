@@ -26,7 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Upstream
 
-- LXQt 2.4.0 (lxqt-panel and pcmanfm-qt 2.4.1), libqtxdg 4.4.0, lxqt-wayland-session 0.4.1, Wayfire 0.11.0.
+- LXQt 2.4.0 (lxqt-panel 2.4.1), libqtxdg 4.4.0, lxqt-wayland-session 0.4.1, Wayfire 0.11.0.
 
 ### Added
 
@@ -45,6 +45,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Wayfire's fisheye plugin is out of the release's plugin list. It's in wayfire-plugins-extra, which isn't built.
 
 - The backlight helper's polkit action has its own name per version, and the installer links it where polkit reads it.
+
+- Super+P opens the home folder in whatever file manager is the default. It used to start pcmanfm-qt.
+
+### Removed
+
+- pcmanfm-qt isn't built. So there are no desktop icons for now, only the wallpaper. libfm-qt is still built, for the Qt file dialog and the portal's file chooser.
 
 ### Other work
 

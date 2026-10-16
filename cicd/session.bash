@@ -11,8 +11,9 @@
 ##	    - xdg-desktop-portal finding our portal and its config
 ##	    - the lock key and the idle lock: gtklock locks the session, with the
 ##	      user name module, and shows "Login failed" for a wrong password
-##	- And that the manifest names the commit, and Wayfire loads every plugin
-##	  in its list.
+##	- And that the manifest names the commit, Wayfire loads every plugin in
+##	  its list, nothing starts pcmanfm-qt, and Super+P opens the home folder
+##	  in the default file manager.
 ##	- The release comes from cicd/artifacts/release/, extracted to the path it
 ##	  was built for.
 ##	- Syntax: cicd/session.bash [--here]
@@ -208,7 +209,7 @@ else
 	fi
 fi
 
-fSection "Lock screen"
+fSection "Keys"
 ## A key's value in the user's wayfire.ini, continuation lines joined.
 fIni(){ ## section key
 	S="[$1]" K="$2" awk '
@@ -217,6 +218,41 @@ fIni(){ ## section key
 		more { line = $0; cont = sub(/[[:space:]]*\\$/, "", line); out = out " " line; if (!cont) exit }
 		END { gsub(/[[:space:]]+/, " ", out); sub(/^ /, "", out); print out }' "${userIni}"
 }
+## stipc presses the keys. The release doesn't load it, and Wayfire picks up a
+## change to its file as it runs.
+sed -i 's/^plugins[[:space:]]*=[[:space:]]*\\$/&\n  stipc \\/' "${userIni}"
+export WAYFIRE_SOCKET="${_WAYFIRE_SOCKET}"
+export WAYLAND_DISPLAY="$(find "${XDG_RUNTIME_DIR}" -maxdepth 1 -type s -name 'wayland-*' -printf '%f\n' | head -n1 || true)"
+fKeys(){ python3 -I "${KEYS}" "$@" >/dev/null 2>&1; }
+fWaitFor fKeys shift || fDie "stipc did not load; check the plugins line in ${userIni}"
+
+fSection "File manager and desktop"
+## LXQtukz has neither for now. pcmanfm-qt was both, until it was dropped.
+named=()
+[[ ! -e "${PREFIX}/bin/pcmanfm-qt" ]] || named+=("bin/pcmanfm-qt")
+for entry in "${PREFIX}"/etc/xdg/autostart/*.desktop "${PREFIX}"/share/applications/*.desktop; do
+	[[ -e "${entry}" ]] || continue
+	if grep -qE '^(Try)?Exec=.*pcmanfm' "${entry}"; then named+=("${entry#"${PREFIX}/"}"); fi
+done
+if grep -v '^[[:space:]]*#' "${userIni}" | grep -q pcmanfm; then named+=("${userIni##*/}"); fi
+if ((! ${#named[@]})); then fCheck "nothing the session starts names pcmanfm-qt" ok; else fCheck "nothing the session starts names pcmanfm-qt" fail "${named[*]}"; fi
+if ! pgrep -xu "${UID}" pcmanfm-qt >/dev/null; then fCheck "no pcmanfm-qt running" ok; else fCheck "no pcmanfm-qt running" fail "$(pgrep -a -xu "${UID}" pcmanfm-qt | head -n1)"; fi
+## Super+P opens the home folder in the default file manager, here a stand-in
+## that writes down what it was asked to open.
+fEcho "$(fIni command binding_filemanager) -> $(fIni command command_filemanager)"
+opened="${run}/filemanager.opened"
+printf '%s\n' '#!/bin/sh' "printf '%s\\n' \"\$@\" > '${opened}'" > "${run}/filemanager.sh"
+chmod +x "${run}/filemanager.sh"
+mkdir -p "${HOME}/.local/share/applications" "${HOME}/.config"
+printf '%s\n' "[Desktop Entry]" "Type=Application" "Name=Stand-in file manager" "Exec=${run}/filemanager.sh %f" "MimeType=inode/directory;" \
+	> "${HOME}/.local/share/applications/lxqtukz-test-files.desktop"
+printf '%s\n' "[Default Applications]" "inode/directory=lxqtukz-test-files.desktop" > "${HOME}/.config/mimeapps.list"
+fKeys super+p
+if fWaitFor test -s "${opened}" && [[ "$(cat "${opened}")" == "${HOME}" ]]; then fCheck "Super+P opens home in the default file manager" ok; else
+	fCheck "Super+P opens home in the default file manager" fail "$(cat "${opened}" 2>/dev/null || echo 'not started')"
+fi
+
+fSection "Lock screen"
 fEcho "plugins: $(fIni core plugins)"
 fEcho "$(fIni command binding_lock) -> $(fIni command command_lock)"
 fEcho "idle: $(fIni autostart idle)"
@@ -235,13 +271,6 @@ if [[ "${idleArgs}" == *" timeout "*" lxqt-leave --lockscreen"* ]]; then fCheck 
 	fCheck "swayidle locks the session when idle" fail "${idleArgs:-not running}"
 fi
 
-## stipc presses the keys. The release doesn't load it, and Wayfire picks up a
-## change to its file as it runs.
-sed -i 's/^plugins[[:space:]]*=[[:space:]]*\\$/&\n  stipc \\/' "${userIni}"
-export WAYFIRE_SOCKET="${_WAYFIRE_SOCKET}"
-export WAYLAND_DISPLAY="$(find "${XDG_RUNTIME_DIR}" -maxdepth 1 -type s -name 'wayland-*' -printf '%f\n' | head -n1 || true)"
-fKeys(){ python3 -I "${KEYS}" "$@" >/dev/null 2>&1; }
-fWaitFor fKeys shift || fDie "stipc did not load; check the plugins line in ${userIni}"
 grim "${run}/unlocked.png"
 fGtklock(){ pgrep -xu "${UID}" gtklock >/dev/null; }
 fLeaveGone(){ ! pgrep -xu "${UID}" lxqt-leave >/dev/null; }
@@ -299,3 +328,4 @@ fEcho "done"
 ##		- 2026-10-14: Created.
 ##		- 2026-10-15: Lock screen checks.
 ##		- 2026-10-15: Manifest commit and plugin checks.
+##		- 2026-10-16: No pcmanfm-qt; Super+P opens the default file manager.

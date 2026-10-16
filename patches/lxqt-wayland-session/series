@@ -1,3 +1,4 @@
 0001-wayfire-keep-keyboard-focus-off-context-menus.patch
 0002-wayfire-lock-the-screen-when-idle.patch
 0003-wayfire-drop-the-fisheye-plugin.patch
+0004-wayfire-open-the-default-file-manager.patch
