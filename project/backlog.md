@@ -427,6 +427,7 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- CPUidle (`DOSIDLE.EXE`) hung at boot, so its line in AUTOEXEC.BAT is now a `rem`. After that it boots to the WFWG logon at 1024x768 in 256 colors.
 		- The garbled first screen from the old note still happens. Ctrl+Alt+Del, then Esc clears it.
 		- Next: log on, check the network and sound.
+	- 20261016: network unplugged on all 3 old Windows VMs, and it stays that way after a restart. They're unpatched and were on the home LAN.
 
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
