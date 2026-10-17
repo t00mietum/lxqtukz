@@ -428,6 +428,9 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 		- The garbled first screen from the old note still happens. Ctrl+Alt+Del, then Esc clears it.
 		- Next: log on, check the network and sound.
 	- 20261016: network unplugged on all 3 old Windows VMs, and it stays that way after a restart. They're unpatched and were on the home LAN.
+	- 20261017: Hackintosh (High Sierra) copied to b28l as `macos_hs`. It boots through OpenCore to the first-run Welcome screen. The disk is a prebuilt image from a download site, never set up. Its network starts unplugged.
+		- OpenCore's Mac model was changed to an iMac18,3, which High Sierra knows. The upgrade will need a newer model.
+		- Next: finish first-run setup, then upgrade on a copy of the disk, up to Tahoe if it runs well enough.
 
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
