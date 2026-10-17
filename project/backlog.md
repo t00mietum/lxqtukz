@@ -423,6 +423,10 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- 20261016: Win2k (vm514c) copied to b28l, disk hash matches b23. New config: 1 CPU, 3 GB, IDE disk, same e1000 MAC on `br0`, Cirrus video. It boots straight to the desktop at 640x480, with the Found New Hardware wizard up.
 		- Next: let the wizard install the Cirrus and other drivers, and remove the old VirtualBox guest additions.
 		- Cirrus driver is in, now 1024x768. Win2k has no driver for the e1000 card, so the NIC is now an RTL8139, which it has built in. Also added a USB tablet for the mouse. Both take effect on the next cold boot.
+	- 20261016: WFWG 3.11 (vm150b) copied to b28l from its rar, with the VMware snapshot chain flattened to one raw disk. Same hardware as under VMware: PCnet NIC, IDE, PS/2 mouse, 16 MB. Sound Blaster 16 replaces the ES1371, which QEMU lacks.
+		- CPUidle (`DOSIDLE.EXE`) hung at boot, so its line in AUTOEXEC.BAT is now a `rem`. After that it boots to the WFWG logon at 1024x768 in 256 colors.
+		- The garbled first screen from the old note still happens. Ctrl+Alt+Del, then Esc clears it.
+		- Next: log on, check the network and sound.
 
 - Decide on the rest of the LXQt apps: lximage-qt, lxqt-archiver, screengrab, lxqt-openssh-askpass and lxqt-admin.
 	- ID: 2026101221490227
