@@ -170,6 +170,47 @@ Sorted per the notes in [Template](#template). A milestone is a Task, and its it
 	- Verified: 20261016, a distro-style `lxqt-desktop.desktop` in `/etc/xdg/autostart` in the test container starts its pcmanfm-qt in the session, and the new check catches it.
 	- Swept: every pcmanfm-qt and libfm-qt name in the repo and in the built prefix. Left alone, since nothing in the session runs them: lxqt-globalkeys' Ctrl+Alt+E (X11 only), lxqt-menu-data's entry for pcmanfm-qt's desktop settings (skipped when missing), lxqt-config's man page, and the other compositors' configs that lxqt-wayland-session installs.
 
+- Pre-next-cut: Updates to CICD script flags (do next)
+	- ID: 2026101911150200
+	- Type: Enhancement
+	- Status: Queued
+	- Priority|Severity: High
+	- Opened: 20261019-111500
+	- Opened by: t00mietum
+	- Related IDs: 2026101911150204
+	- Requirements:
+		- Rename `--ci` to `--gate`.
+		- `--quick`:
+			- Runs whatever linting, validation, and testing steps are very quick.
+			- Cross-compiles whatever is fast. E.g. maybe skip slow arm64.
+			- Skips anything requiring an external host.
+		- No flags by default does everything.
+		- The other existing flags can stay.
+
+- Pre-next-cut: Builds clean up stale artifacts and side effects
+	- ID: 2026101911150202
+	- Type: Enhancement
+	- Status: Queued
+	- Priority|Severity: Avg
+	- Opened: 20261019-111500
+	- Opened by: t00mietum
+	- Requirements:
+		- Verify or ensure that builds clean up *stale* artifacts and side effects when they're done: caches, container cruft, tmp files, etc.
+
+- Pre-next-cut: CICD `--leakcheck` and `--no-leakcheck`
+	- ID: 2026101911150204
+	- Type: Enhancement
+	- Status: Queued
+	- Priority|Severity: Avg
+	- Opened: 20261019-111500
+	- Opened by: t00mietum
+	- Parent ID: 2026101714414452
+	- Related IDs: 2026101911150200
+	- Requirements:
+		- CICD has both `--leakcheck` and `--no-leakcheck`.
+			- `--leakcheck` is useful to add back in for `--quick`.
+			- `--no-leakcheck` is useful to exclude from the default, or with `--quiet`.
+
 - Milestone 1 - First Debian build
 	- ID: 2026101221490200
 	- Type: Task
